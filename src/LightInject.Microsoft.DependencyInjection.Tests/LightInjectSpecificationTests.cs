@@ -8,11 +8,11 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 {
     using global::Microsoft.Extensions.DependencyInjection;
     using global::Microsoft.Extensions.DependencyInjection.Specification;
-    public class Class1 : DependencyInjectionSpecificationTests
+    public class LightInjectSpecificationTests : DependencyInjectionSpecificationTests
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
         {
-            throw new NotImplementedException();
-        }
+            return null;
+        }        
     }
 }
