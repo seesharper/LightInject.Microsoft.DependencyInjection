@@ -53,7 +53,7 @@ namespace LightInject.Microsoft.DependencyInjection
             Dictionary<Type, List<ServiceRegistration>> services = new Dictionary<Type, List<ServiceRegistration>>();
             foreach (var serviceDescriptor in serviceCollection)
             {
-                var registration = CreateServiceRegistration(container, serviceDescriptor);
+                var registration = CreateServiceRegistration(serviceDescriptor);
                 List<ServiceRegistration> existingRegistrations;
                 if (services.TryGetValue(serviceDescriptor.ServiceType, out existingRegistrations))
                 {
@@ -80,11 +80,11 @@ namespace LightInject.Microsoft.DependencyInjection
             return container.GetInstance<IServiceProvider>();
         }
 
-        private static ServiceRegistration CreateServiceRegistration(IServiceContainer container, ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor)
         {
             if (serviceDescriptor.ImplementationFactory != null)
             {
-                return CreateServiceRegistrationForFactoryDelegate(container, serviceDescriptor);
+                return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor);
             }
             if (serviceDescriptor.ImplementationInstance != null)
             {
@@ -114,7 +114,7 @@ namespace LightInject.Microsoft.DependencyInjection
         }
 
 
-        private static ServiceRegistration CreateServiceRegistrationForFactoryDelegate(IServiceContainer container, ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateServiceRegistrationForFactoryDelegate(ServiceDescriptor serviceDescriptor)
         {
             ServiceRegistration registration = new ServiceRegistration();
             registration.Lifetime = ResolveLifetime(serviceDescriptor);
@@ -142,7 +142,7 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetMethod("CreateTypedFactoryDelegate", BindingFlags.Static | BindingFlags.NonPublic);
             var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType);
-            return (Delegate)closedGenericMethod.Invoke(null, new[] { serviceDescriptor });
+            return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
         }
 
         private static Func<IServiceContainer, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
@@ -211,64 +211,71 @@ namespace LightInject.Microsoft.DependencyInjection
     public class LightInjectServiceScopeFactory : IServiceScopeFactory
     {
         private readonly IServiceContainer container;
-
-        private ObjectPool<IServiceContainer> containerPool;
+        private ContainerPool containerPool;
 
         public LightInjectServiceScopeFactory(IServiceContainer container)
         {
             this.container = container;            
+            containerPool = new ContainerPool(GetChildContainer);
         }
 
         public IServiceScope CreateScope()
         {
-            return new LightInjectServiceScope(GetChildContainer());
+            return new LightInjectServiceScope(containerPool);
         }
 
         private IServiceContainer GetChildContainer()
         {
             var childContainer = container.Clone();
             childContainer.ScopeManagerProvider = new PerLogicalCallContextScopeManagerProvider();
-            return childContainer;           
+            return childContainer;
         }
     }
 
     public class LightInjectServiceScope : IServiceScope
     {
-        public LightInjectServiceScope(IServiceContainer container)
+        private readonly ContainerPool containerPool;
+        private readonly IServiceContainer childContainer;
+
+        public LightInjectServiceScope(ContainerPool containerPool)
         {
-            ServiceProvider = new ChildServiceProvider(container);
+            this.containerPool = containerPool;
+            childContainer = containerPool.GetContainer();
+            ServiceProvider = new ChildServiceProvider(childContainer);
         }
 
         public void Dispose()
         {
             ((IDisposable)ServiceProvider).Dispose();
+            containerPool.PutObject(childContainer);
         }
 
         public IServiceProvider ServiceProvider { get; }
+
+        
     }
 
-    public class ObjectPool<T>
+    public class ContainerPool
     {
-        private ConcurrentBag<T> _objects;
-        private Func<T> _objectGenerator;
+        private readonly ConcurrentBag<IServiceContainer> containers;
+        private readonly Func<IServiceContainer> containerFactory;
 
-        public ObjectPool(Func<T> objectGenerator)
-        {
-            if (objectGenerator == null) throw new ArgumentNullException("objectGenerator");
-            _objects = new ConcurrentBag<T>();
-            _objectGenerator = objectGenerator;
+        public ContainerPool(Func<IServiceContainer> containerFactory)
+        {            
+            containers = new ConcurrentBag<IServiceContainer>();
+            this.containerFactory = containerFactory;
         }
 
-        public T GetObject()
+        public IServiceContainer GetContainer()
         {
-            T item;
-            if (_objects.TryTake(out item)) return item;
-            return _objectGenerator();
+            IServiceContainer item;
+            if (containers.TryTake(out item)) return item;
+            return containerFactory();
         }
 
-        public void PutObject(T item)
+        public void PutObject(IServiceContainer container)
         {
-            _objects.Add(item);
+            containers.Add(container);
         }
     }
 
