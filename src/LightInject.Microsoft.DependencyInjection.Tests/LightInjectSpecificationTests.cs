@@ -12,7 +12,8 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
         {
-            return null;
+            var container = new ServiceContainer();
+            return container.CreateServiceProvider(serviceCollection);
         }        
     }
 }
