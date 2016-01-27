@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>LightInject.Microsoft.DependencyInjection.Source</id>
+        <version>1.0.0.1</version>
+        <authors>Bernhard Richter</authors>
+        <owners>Bernhard Richter</owners>
+        <licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
+        <projectUrl>http://seesharper.github.io/LightInject/</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+       <description>Enables LightInject to be used as the service container in ASP.NET Core and Entity Framework 7 applications.</description>
+        <releaseNotes>http://www.lightinject.net/#whatsnew</releaseNotes>
+        <copyright>Bernhard Richter</copyright>
+        <tags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</tags>
+        <dependencies>
+            <dependency id="LightInject.Source" version="4.0.5" />
+        </dependencies>
+    </metadata>
+    <files>        
+        <file src="content\net45\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" target="content\net45\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" />
+        <file src="content\net46\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" target="content\net46\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" />
+    </files>
+</package>

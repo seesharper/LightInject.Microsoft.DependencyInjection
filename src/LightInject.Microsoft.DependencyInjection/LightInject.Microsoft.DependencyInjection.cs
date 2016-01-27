@@ -38,10 +38,10 @@
 namespace LightInject.Microsoft.DependencyInjection
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Reflection;
-    using System.Runtime.Remoting.Messaging;
+    using System.Reflection;    
     using global::Microsoft.Extensions.DependencyInjection;
 
     public static class DependencyInjectionContainerExtensions
@@ -128,8 +128,8 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             switch (serviceDescriptor.Lifetime)
             {
-                case ServiceLifetime.Scoped:
-                    return new AspNetPerScopeLifetime();
+                case ServiceLifetime.Scoped:                    
+                    return new PerScopeLifetime();
                 case ServiceLifetime.Singleton:
                     return new PerContainerLifetime();
                 case ServiceLifetime.Transient:
@@ -175,7 +175,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <param name="serviceType">The service type to return.</param>
         /// <returns>An instance of the given <see cref="serviceType"/>.</returns>
         public object GetService(Type serviceType)
-        {
+        {           
             return serviceContainer.TryGetInstance(serviceType);
         }
 
@@ -212,9 +212,11 @@ namespace LightInject.Microsoft.DependencyInjection
     {
         private readonly IServiceContainer container;
 
+        private ObjectPool<IServiceContainer> containerPool;
+
         public LightInjectServiceScopeFactory(IServiceContainer container)
         {
-            this.container = container;
+            this.container = container;            
         }
 
         public IServiceScope CreateScope()
@@ -224,17 +226,11 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private IServiceContainer GetChildContainer()
         {
-            // TODO: Replace this with a container pool
-            var childContainer = new ServiceContainer();
-            container.ScopeManagerProvider = new PerLogicalCallContextScopeManagerProvider();
-            foreach (var registration in container.AvailableServices)
-            {
-                childContainer.Register(registration);
-            }
-            return childContainer;
+            var childContainer = container.Clone();
+            childContainer.ScopeManagerProvider = new PerLogicalCallContextScopeManagerProvider();
+            return childContainer;           
         }
     }
-
 
     public class LightInjectServiceScope : IServiceScope
     {
@@ -251,56 +247,29 @@ namespace LightInject.Microsoft.DependencyInjection
         public IServiceProvider ServiceProvider { get; }
     }
 
-    public class AspNetPerScopeLifetime : ILifetime
+    public class ObjectPool<T>
     {
-        private readonly ThreadSafeDictionary<Scope, object> instances = new ThreadSafeDictionary<Scope, object>();
+        private ConcurrentBag<T> _objects;
+        private Func<T> _objectGenerator;
 
-        /// <summary>
-        /// Returns the same service instance within the current <see cref="Scope"/>.
-        /// </summary>
-        /// <param name="createInstance">The function delegate used to create a new service instance.</param>
-        /// <param name="scope">The <see cref="Scope"/> of the current service request.</param>
-        /// <returns>The requested services instance.</returns>
-        public object GetInstance(Func<object> createInstance, Scope scope)
+        public ObjectPool(Func<T> objectGenerator)
         {
-            if (scope == null)
-            {
-                return createInstance();
-            }
-
-            return instances.GetOrAdd(scope, s => CreateScopedInstance(s, createInstance));
+            if (objectGenerator == null) throw new ArgumentNullException("objectGenerator");
+            _objects = new ConcurrentBag<T>();
+            _objectGenerator = objectGenerator;
         }
 
-        private static void RegisterForDisposal(Scope scope, object instance)
+        public T GetObject()
         {
-            var disposable = instance as IDisposable;
-            if (disposable != null)
-            {
-                scope.TrackInstance(disposable);
-            }
+            T item;
+            if (_objects.TryTake(out item)) return item;
+            return _objectGenerator();
         }
 
-        private object CreateScopedInstance(Scope scope, Func<object> createInstance)
+        public void PutObject(T item)
         {
-
-            if (scope == null)
-            {
-                return createInstance();
-            }
-
-            scope.Completed += OnScopeCompleted;
-            var instance = createInstance();
-
-            RegisterForDisposal(scope, instance);
-            return instance;
-        }
-
-        private void OnScopeCompleted(object sender, EventArgs e)
-        {
-            var scope = (Scope)sender;
-            scope.Completed -= OnScopeCompleted;
-            object removedInstance;
-            instances.TryRemove(scope, out removedInstance);
+            _objects.Add(item);
         }
     }
+
 }
