@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 1.0.1
+    LightInject.Microsoft.DependencyInjection version 1.0.1-rc
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -140,7 +140,7 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private static Delegate CreateFactoryDelegate(ServiceDescriptor serviceDescriptor)
         {
-            var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetMethod("CreateTypedFactoryDelegate", BindingFlags.Static | BindingFlags.NonPublic);
+            var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetMethod("CreateTypedFactoryDelegate", BindingFlags.Static | BindingFlags.NonPublic);
             var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType);
             return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
         }
@@ -151,7 +151,6 @@ namespace LightInject.Microsoft.DependencyInjection
         }
 
     }
-
 
     /// <summary>
     /// A LightInject <see cref="IServiceProvider"/> to be used by ASP.NET Core applications
