@@ -2,6 +2,11 @@
 
 Enables **LightInject** to be used as the service container in ASP.NET Core and Entity Framework 7 applications.
 
+> Note: This a release candidate. 
+
+
+
+
 ## Installing
 ```
 "dependencies": {
