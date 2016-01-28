@@ -8,7 +8,7 @@
     "dnx451" : 
     {
       "dependencies": {
-        "LightInject": "4.0.5"
+        "LightInject": "4.0.6"
       }
     },  
     "dnxcore50": {
@@ -26,7 +26,7 @@
         "System.Reflection.TypeExtensions": "4.0.0",
         "System.Reflection.Extensions": "4.0.0",
         "System.Runtime.InteropServices": "4.0.10",
-        "LightInject": "4.0.5"
+        "LightInject": "4.0.6"
                   
       }
     }
