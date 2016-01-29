@@ -4,7 +4,8 @@
 
 Enables **LightInject** to be used as the service container in ASP.NET Core and Entity Framework 7 applications.
 
-> Note: This package is currently in pre release and you need to add https://www.myget.org/F/aspnetvnext/api/v3/index.json to your package sources. 
+> Note: This package is currently in pre release and you need to add https://www.myget.org/F/aspnetvnext/api/v3/index.json to your package sources.
+This package will only work with the ASP.NET rc2 packages available from this feed. This will all change once the rc2 is released to the official Nuget feed. 
  
 
 ## Installing
