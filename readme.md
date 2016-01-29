@@ -17,12 +17,20 @@ Enables **LightInject** to be used as the service container in ASP.NET Core and 
 ## Usage
 ```
 public class Startup
-{
-	public IServiceProvider ConfigureServices(IServiceCollection services)
-	{
-		var container = new ServiceContainer();
-		return container.CreateServiceProvider(services);        
-	}
+{       
+    public IServiceProvider ConfigureServices(IServiceCollection services)
+    {
+        var container = new ServiceContainer();
+        return container.CreateServiceProvider(services);
+    }
+    
+    public void Configure(IApplicationBuilder app)
+    {          
+        app.Run(async (context) =>
+        {
+            await context.Response.WriteAsync("Hello from LightInject");
+        });
+    }
 }
 
 ```
