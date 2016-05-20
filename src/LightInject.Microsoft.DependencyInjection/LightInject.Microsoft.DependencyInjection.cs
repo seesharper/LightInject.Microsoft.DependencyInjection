@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 1.0.1-rc2
+    LightInject.Microsoft.DependencyInjection version 1.0.2-rc2
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -48,6 +48,7 @@ namespace LightInject.Microsoft.DependencyInjection
     {
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
+            container.ScopeManagerProvider = new PerContainerScopeManagerProvider();
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
             Dictionary<Type, List<ServiceRegistration>> services = new Dictionary<Type, List<ServiceRegistration>>();
@@ -226,7 +227,7 @@ namespace LightInject.Microsoft.DependencyInjection
         private IServiceContainer GetChildContainer()
         {
             var childContainer = container.Clone();
-            childContainer.ScopeManagerProvider = new PerLogicalCallContextScopeManagerProvider();
+            childContainer.ScopeManagerProvider = new PerContainerScopeManagerProvider();
             return childContainer;
         }
     }
@@ -278,4 +279,13 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
+    public class PerContainerScopeManagerProvider : IScopeManagerProvider
+    {
+        private readonly ScopeManager scopeManager = new ScopeManager();
+
+        public ScopeManager GetScopeManager()
+        {
+            return scopeManager;            
+        }
+    }
 }
