@@ -2,31 +2,30 @@
   "version": "3.0.0.10",
   "dependencies": {
     
-    "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc2-15921"
+    "Microsoft.Extensions.DependencyInjection.Abstractions": "1.0.0-rc2-final"
   },
   "frameworks": {   
-    "dnx451" : 
+    "netstandard1.1" : 
     {
       "dependencies": {
-        "LightInject": "4.0.6"
+        
+        "System.Collections": "4.0.11-rc2-24027",
+        "System.Collections.Concurrent": "4.0.12-rc2-24027",        
+        "System.Linq": "4.1.0-rc2-24027",
+        "System.Reflection": "4.1.0-rc2-24027",                        
+        "System.Runtime.InteropServices": "4.1.0-rc2-24027",
+        "LightInject": "4.0.10-rc2-2"
+                        
       }
     },  
-    "dnxcore50": {
+    "netstandard1.3": {
       "dependencies": {
-        "System.Collections": "4.0.10",
-        "System.Collections.Concurrent": "4.0.10",
-        "System.IO": "4.0.10",
-        "System.Linq": "4.0.0",
-        "System.Reflection": "4.0.10",
-        "System.Reflection.Emit": "4.0.0",
-        "System.Reflection.Emit.Lightweight": "4.0.0",
-        "System.Runtime": "4.0.20",
-        "System.Runtime.Extensions": "4.0.10",
-        "System.Diagnostics.Tools": "4.0.0",
-        "System.Reflection.TypeExtensions": "4.0.0",
-        "System.Reflection.Extensions": "4.0.0",
-        "System.Runtime.InteropServices": "4.0.10",
-        "LightInject": "4.0.6"
+        "System.Collections": "4.0.11-rc2-24027",
+        "System.Collections.Concurrent": "4.0.12-rc2-24027",        
+        "System.Linq": "4.1.0-rc2-24027",
+        "System.Reflection": "4.1.0-rc2-24027",                        
+        "System.Runtime.InteropServices": "4.1.0-rc2-24027",
+        "LightInject": "4.0.10-rc2-2"
                   
       }
     }

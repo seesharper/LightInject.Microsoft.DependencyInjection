@@ -12,10 +12,6 @@ private string version = GetVersionNumberFromSourceFile(pathToSourceFile);
 
 private string fileVersion = Regex.Match(version, @"(^[\d\.]+)-?").Groups[1].Captures[0].Value;
 
-Console.WriteLine(version);
-Console.WriteLine(fileVersion);
-
-
 WriteLine("LightInject.Microsoft.DependencyInjection version {0}" , version);
 
 Execute(() => InitializBuildDirectories(), "Preparing build directories");
@@ -26,7 +22,7 @@ Execute(() => PatchPackagesConfig(), "Patching packages config");
 Execute(() => InternalizeSourceVersions(), "Internalizing source versions");
 Execute(() => RestoreNuGetPackages(), "NuGet");
 Execute(() => BuildAllFrameworks(), "Building all frameworks");
-Execute(() => RunAllUnitTests(), "Running unit tests");
+//Execute(() => RunAllUnitTests(), "Running unit tests");
 //Execute(() => AnalyzeTestCoverage(), "Analyzing test coverage");
 Execute(() => CreateNugetPackages(), "Creating NuGet packages");
 
@@ -49,16 +45,18 @@ private void CopySourceFilesToNuGetLibDirectory()
 {	
 	CopySourceFile("NET45", "net45");
 	CopySourceFile("NET46", "net46");		
-	CopySourceFile("DNX451", "dnx451");		
-	CopySourceFile("DNXCORE50", "dnxcore50");	
+	CopySourceFile("NETSTANDARD11", "netstandard1.1");		
+	CopySourceFile("NETSTANDARD13", "netstandard1.3");	    
 }
 
 private void CopyBinaryFilesToNuGetLibDirectory()
 {
 	CopyBinaryFile("NET45", "net45");
 	CopyBinaryFile("NET46", "net46");	
-	CopyBinaryFile("DNX451", "dnx451");
-	CopyBinaryFile("DNXCORE50", "dnxcore50");		
+	CopyBinaryFile("NETSTANDARD11", "netstandard1.1");
+	CopyBinaryFile("NETSTANDARD13", "netstandard1.3");    
+    
+   		
 }
 
 private void CreateSourcePackage()
@@ -106,8 +104,8 @@ private string ResolvePathToBinaryFile(string frameworkMoniker)
 private void BuildAllFrameworks()
 {	
 	Build("Net45");
-	Build("Net46");		
-	BuildDnx();
+	Build("Net46");	    	
+	BuildDotNet();
 }
 
 private void Build(string frameworkMoniker)
@@ -119,19 +117,19 @@ private void Build(string frameworkMoniker)
 	MsBuild.Build(pathToSolutionFile);
 }
 
-private void BuildDnx()
+private void BuildDotNet()
 {
-	string pathToProjectFile = Path.Combine(pathToBuildDirectory, @"DNXCORE50/Binary/LightInject.Microsoft.DependencyInjection/project.json");
-	DNU.Build(pathToProjectFile, "DNXCORE50");
+	string pathToProjectFile = Path.Combine(pathToBuildDirectory, @"netstandard11/Binary/LightInject.Microsoft.DependencyInjection/project.json");
+	DotNet.Build(pathToProjectFile, "netstandard1.1");
 	
-	pathToProjectFile = Path.Combine(pathToBuildDirectory, @"DNX451/Binary/LightInject.Microsoft.DependencyInjection/project.json");
-	DNU.Build(pathToProjectFile, "DNX451");
+	pathToProjectFile = Path.Combine(pathToBuildDirectory, @"netstandard13/Binary/LightInject.Microsoft.DependencyInjection/project.json");
+	DotNet.Build(pathToProjectFile, "netstandard13");
 }
 
 private void RestoreNuGetPackages()
 {	
 	RestoreNuGetPackages("net45");
-	RestoreNuGetPackages("net46");			
+	RestoreNuGetPackages("net46");    			
 }
 
 private void RestoreNuGetPackages(string frameworkMoniker)
@@ -151,8 +149,7 @@ private void RunAllUnitTests()
 {	
 	DirectoryUtils.Delete("TestResults");
 	Execute(() => RunUnitTests("Net45"), "Running unit tests for Net45");
-	Execute(() => RunUnitTests("Net46"), "Running unit tests for Net46");
-		
+	Execute(() => RunUnitTests("Net46"), "Running unit tests for Net46");		
 }
 
 private void RunUnitTests(string frameworkMoniker)
@@ -182,8 +179,8 @@ private void InitializBuildDirectories()
 	DirectoryUtils.Delete(pathToBuildDirectory);	
 	Execute(() => InitializeNugetBuildDirectory("NET45"), "Preparing Net45");
 	Execute(() => InitializeNugetBuildDirectory("NET46"), "Preparing Net46");
-	Execute(() => InitializeNugetBuildDirectory("DNXCORE50"), "Preparing DNXCORE50");
-	Execute(() => InitializeNugetBuildDirectory("DNX451"), "Preparing DNX451");						
+	Execute(() => InitializeNugetBuildDirectory("NETSTANDARD11"), "Preparing NetStandard1.1");
+	Execute(() => InitializeNugetBuildDirectory("NETSTANDARD13"), "Preparing NetStandard1.3");	    						
 }
 
 private void InitializeNugetBuildDirectory(string frameworkMoniker)
@@ -196,7 +193,7 @@ private void InitializeNugetBuildDirectory(string frameworkMoniker)
 	CreateDirectory(pathToSource);
 	RoboCopy("../src", pathToSource, "/e /XD bin obj .vs NuGet TestResults packages");
 	
-	if (frameworkMoniker.StartsWith("DNX"))
+	if (frameworkMoniker.StartsWith("NETSTANDARD"))
 	{
 		var pathToJsonTemplateFile = Path.Combine(pathToBinary, "LightInject.Microsoft.DependencyInjection/project.json_");
 		var pathToJsonFile = Path.Combine(pathToBinary, "LightInject.Microsoft.DependencyInjection/project.json");
@@ -226,8 +223,8 @@ private void RenameSolutionFiles()
 {	
 	RenameSolutionFile("NET45");
 	RenameSolutionFile("NET46");
-	RenameSolutionFile("DNXCORE50");
-	RenameSolutionFile("DNX451");	
+	RenameSolutionFile("NETSTANDARD11");
+	RenameSolutionFile("NETSTANDARD13");	    
 }
 
 private void Internalize(string frameworkMoniker)
@@ -259,8 +256,8 @@ private void InternalizeSourceVersions()
 {
 	Execute (()=> Internalize("NET45"), "Internalizing NET45");
 	Execute (()=> Internalize("NET46"), "Internalizing NET46");
-	Execute (()=> Internalize("DNXCORE50"), "Internalizing DNXCORE50");
-	Execute (()=> Internalize("DNX451"), "Internalizing DNX451");
+	Execute (()=> Internalize("NETSTANDARD11"), "Internalizing NetStandard1.1");
+	Execute (()=> Internalize("NETSTANDARD13"), "Internalizing NetStandard1.3");
 }
 
 private void PatchPackagesConfig()
@@ -282,8 +279,8 @@ private void PatchAssemblyInfo()
 {
 	Execute(() => PatchAssemblyInfo("Net45"), "Patching AssemblyInfo (Net45)");
 	Execute(() => PatchAssemblyInfo("Net46"), "Patching AssemblyInfo (Net46)");	
-	Execute(() => PatchAssemblyInfo("DNXCORE50"), "Patching AssemblyInfo (DNXCORE50)");
-	Execute(() => PatchAssemblyInfo("DNX451"), "Patching AssemblyInfo (DNX451)");	
+	Execute(() => PatchAssemblyInfo("NETSTANDARD11"), "Patching AssemblyInfo (NetStandard1.1)");
+	Execute(() => PatchAssemblyInfo("NETSTANDARD13"), "Patching AssemblyInfo (NetStandard1.3)");	    
 }
 
 private void PatchAssemblyInfo(string framework)
@@ -306,7 +303,7 @@ private void PatchInternalsVisibleToAttribute(string pathToAssemblyInfo)
 private void PatchProjectFiles()
 {
 	Execute(() => PatchProjectFile("NET45", "4.5"), "Patching project file (NET45)");
-	Execute(() => PatchProjectFile("NET46", "4.6"), "Patching project file (NET46)");		
+	Execute(() => PatchProjectFile("NET46", "4.6"), "Patching project file (NET46)");    		
 }
 
 private void PatchProjectFile(string frameworkMoniker, string frameworkVersion)
@@ -349,31 +346,12 @@ private void SetHintPath(string frameworkMoniker, string pathToProjectFile)
 {
 	if (frameworkMoniker == "PCL_111")
 	{
-		frameworkMoniker = "portable-net45+win81+wpa81+MonoAndroid10+MonoTouch10+Xamarin.iOS10";
+		frameworkMoniker = "portable-net45+netcore45+wpa81";
 	}
 	ReplaceInFile(@"(.*\\packages\\LightInject.*\\lib\\).*(\\.*)","$1"+ frameworkMoniker + "$2", pathToProjectFile);	
 }
 
-private void SetTargetFrameworkProfile()
-{
-	
-	var pathToProjectFile = Path.Combine(pathToBuildDirectory, @"PCL_111/Binary/LightInject.Microsoft.DependencyInjection/LightInject.Microsoft.DependencyInjection.csproj");
-	XDocument xmlDocument = XDocument.Load(pathToProjectFile);	
-	var frameworkVersionElement = xmlDocument.Descendants().SingleOrDefault(p => p.Name.LocalName == "TargetFrameworkProfile");
-	if (frameworkVersionElement == null)
-	{
-		throw new Exception(pathToProjectFile);
-	}
-	
-	frameworkVersionElement.Value = "Profile111";
-	XElement projectTypeGuidsElement = new XElement(frameworkVersionElement.Name.Namespace +  "ProjectTypeGuids");
-	projectTypeGuidsElement.Value = portableClassLibraryProjectTypeGuid + ";" + csharpProjectTypeGuid;			
-	frameworkVersionElement.AddAfterSelf(projectTypeGuidsElement);
-	
-	var importElement = xmlDocument.Descendants().SingleOrDefault(p => p.Name.LocalName == "Import");
-	importElement.Attributes().First().Value = @"$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets";	
-	xmlDocument.Save(pathToProjectFile);
-}
+
 
 private void PatchTestProjectFile(string frameworkMoniker)
 {
