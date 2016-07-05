@@ -12,15 +12,9 @@
         <releaseNotes>http://www.lightinject.net/#whatsnew</releaseNotes>
         <copyright>Bernhard Richter</copyright>
         <tags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</tags>
-        <dependencies>
-            <group targetFramework=".NETFramework4.5" >
-                <dependency id="LightInject" version="4.0.10-rc2-2" />
-                <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="1.0.0-rc2-final" />
-            </group>    
-            <group targetFramework=".NETFramework4.6" >
-                <dependency id="LightInject" version="4.0.10-rc2-2" />
-                <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="1.0.0-rc2-final" />
-            </group>               
+        <dependencies>            
+            <dependency id="LightInject" version="4.0.11" />
+            <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="1.0.0" />            
         </dependencies>
     </metadata>    
 </package>

@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 1.0.1-rc2-2
+    LightInject.Microsoft.DependencyInjection version 1.0.1
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -41,11 +41,35 @@ namespace LightInject.Microsoft.DependencyInjection
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Reflection;    
+    using System.Linq.Expressions;
+    using System.Reflection;
     using global::Microsoft.Extensions.DependencyInjection;
 
+    /// <summary>
+    /// Extends the <see cref="IServiceContainer"/> interface.
+    /// </summary>
     public static class DependencyInjectionContainerExtensions
     {
+        private static readonly MethodInfo GetInstanceMethod;
+        private static readonly MethodInfo GetNamedInstanceMethod;
+
+        static DependencyInjectionContainerExtensions()
+        {
+            GetInstanceMethod =
+                typeof(IServiceFactory).GetTypeInfo().DeclaredMethods
+                    .Single(m => m.Name == "GetInstance" && !m.IsGenericMethod && m.GetParameters().Length == 1);
+            GetNamedInstanceMethod =
+                typeof(IServiceFactory)
+                    .GetTypeInfo().DeclaredMethods
+                    .Single(m => m.Name == "GetInstance" && !m.IsGenericMethod && m.GetParameters().Length == 2 && m.GetParameters().Last().ParameterType == typeof(string));
+        }
+
+        /// <summary>
+        /// Creates an <see cref="IServiceProvider"/> based on the given <paramref name="serviceCollection"/>.
+        /// </summary>
+        /// <param name="container">The target <see cref="IServiceContainer"/>.</param>
+        /// <param name="serviceCollection">The <see cref="IServiceCollection"/> that contains information about the services to be registered.</param>
+        /// <returns>A configured <see cref="IServiceProvider"/>.</returns>
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
             container.ScopeManagerProvider = new PerContainerScopeManagerProvider();
@@ -62,6 +86,7 @@ namespace LightInject.Microsoft.DependencyInjection
                     {
                         existingRegistration.ServiceName = Guid.NewGuid().ToString();
                     }
+
                     existingRegistrations.Add(registration);
                 }
                 else
@@ -78,7 +103,51 @@ namespace LightInject.Microsoft.DependencyInjection
                 container.Register(registration);
             }
 
+            var multipleRegistrations = services.Where(s => !s.Key.GetTypeInfo().IsGenericType && s.Value.Count > 0);
+            foreach (var multipleRegistration in multipleRegistrations)
+            {
+                container.Register(CreateEnumerableServiceRegistration(multipleRegistration.Key, multipleRegistration.Value));
+            }
+
             return container.GetInstance<IServiceProvider>();
+        }
+
+        private static ServiceRegistration CreateEnumerableServiceRegistration(
+            Type elementType,
+            IEnumerable<ServiceRegistration> serviceRegistrations)
+        {
+            var serviceFactoryParameter = Expression.Parameter(typeof(IServiceFactory), "serviceFactory");
+            Type enumerableType = typeof(IEnumerable<>).MakeGenericType(elementType);
+            var getInstanceExpressions = new List<Expression>();
+
+            foreach (var serviceRegistration in serviceRegistrations)
+            {
+                getInstanceExpressions.Add(CreateGetInstanceExpression(serviceFactoryParameter, serviceRegistration.ServiceType, serviceRegistration.ServiceName));
+            }
+
+            var newArrayExpression = Expression.NewArrayInit(elementType, getInstanceExpressions);
+            var lambdaExpression = Expression.Lambda(newArrayExpression, serviceFactoryParameter);
+
+            ServiceRegistration enumerableRegistration = new ServiceRegistration();
+            enumerableRegistration.ServiceType = enumerableType;
+            enumerableRegistration.ServiceName = string.Empty;
+            enumerableRegistration.FactoryExpression = lambdaExpression.Compile();
+            return enumerableRegistration;
+        }
+
+        private static Expression CreateGetInstanceExpression(ParameterExpression serviceFactoryExpression, Type serviceType, string serviceName)
+        {
+            MethodCallExpression getInstanceMethodExpression;
+            if (serviceName == string.Empty)
+            {
+                getInstanceMethodExpression = Expression.Call(serviceFactoryExpression, GetInstanceMethod, Expression.Constant(serviceType));
+            }
+            else
+            {
+                getInstanceMethodExpression = Expression.Call(serviceFactoryExpression, GetNamedInstanceMethod, Expression.Constant(serviceType), Expression.Constant(serviceName));
+            }
+
+            return Expression.Convert(getInstanceMethodExpression, serviceType);
         }
 
         private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor)
@@ -87,12 +156,13 @@ namespace LightInject.Microsoft.DependencyInjection
             {
                 return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor);
             }
+
             if (serviceDescriptor.ImplementationInstance != null)
             {
                 return CreateServiceRegistrationForInstance(serviceDescriptor);
             }
-            return CreateServiceRegistrationServiceType(serviceDescriptor);
 
+            return CreateServiceRegistrationServiceType(serviceDescriptor);
         }
 
         private static ServiceRegistration CreateServiceRegistrationServiceType(ServiceDescriptor serviceDescriptor)
@@ -114,7 +184,6 @@ namespace LightInject.Microsoft.DependencyInjection
             return registration;
         }
 
-
         private static ServiceRegistration CreateServiceRegistrationForFactoryDelegate(ServiceDescriptor serviceDescriptor)
         {
             ServiceRegistration registration = new ServiceRegistration();
@@ -124,24 +193,29 @@ namespace LightInject.Microsoft.DependencyInjection
             registration.ServiceName = string.Empty;
             return registration;
         }
-      
+
         private static ILifetime ResolveLifetime(ServiceDescriptor serviceDescriptor)
         {
+            ILifetime lifetime = null;
+
             switch (serviceDescriptor.Lifetime)
             {
-                case ServiceLifetime.Scoped:                    
-                    return new PerScopeLifetime();
+                case ServiceLifetime.Scoped:
+                    lifetime = new PerScopeLifetime();
+                    break;
                 case ServiceLifetime.Singleton:
-                    return new PerContainerLifetime();
+                    lifetime = new PerContainerLifetime();
+                    break;
                 case ServiceLifetime.Transient:
-                    return new PerRequestLifeTime();
+                    lifetime = new PerRequestLifeTime();
+                    break;
             }
-            return null;
+
+            return lifetime;
         }
 
         private static Delegate CreateFactoryDelegate(ServiceDescriptor serviceDescriptor)
         {
-            //var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetMethod("CreateTypedFactoryDelegate", BindingFlags.Static | BindingFlags.NonPublic);
             var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedFactoryDelegate");
             var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType);
             return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
@@ -151,18 +225,16 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             return container => (T)serviceDescriptor.ImplementationFactory(container.GetInstance<IServiceProvider>());
         }
-
     }
 
     /// <summary>
-    /// A LightInject <see cref="IServiceProvider"/> to be used by ASP.NET Core applications
+    /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
-    public class LightInjectServiceProvider : IServiceProvider, IDisposable
+    internal class LightInjectServiceProvider : IServiceProvider, IDisposable
     {
-        private readonly IServiceContainer serviceContainer;
         protected readonly Scope Scope;
-        protected bool IsDisposed;
-
+        protected bool isDisposed;
+        private readonly IServiceContainer serviceContainer;
 
         public LightInjectServiceProvider(IServiceContainer serviceContainer)
         {
@@ -174,49 +246,48 @@ namespace LightInject.Microsoft.DependencyInjection
         /// Gets an instance of the given <paramref name="serviceType"/>.
         /// </summary>
         /// <param name="serviceType">The service type to return.</param>
-        /// <returns>An instance of the given <see cref="serviceType"/>.</returns>
+        /// <returns>An instance of the given <paramref name="serviceType"/>.</returns>
         public object GetService(Type serviceType)
-        {           
+        {
             return serviceContainer.TryGetInstance(serviceType);
         }
 
-        
         public virtual void Dispose()
         {
-            if (!IsDisposed)
+            if (!isDisposed)
             {
-                IsDisposed = true;
+                isDisposed = true;
                 Scope.Dispose();
                 serviceContainer.Dispose();
-            }            
-        }       
+            }
+        }
     }
 
-    public class ChildServiceProvider : LightInjectServiceProvider
+    internal class ChildServiceProvider : LightInjectServiceProvider
     {
-        public ChildServiceProvider(IServiceContainer serviceContainer) : base(serviceContainer)
+        public ChildServiceProvider(IServiceContainer serviceContainer)
+            : base(serviceContainer)
         {
-            
         }
 
         public override void Dispose()
         {
-            if (!IsDisposed)
+            if (!isDisposed)
             {
-                IsDisposed = true;
+                isDisposed = true;
                 Scope.Dispose();
             }
         }
     }
 
-    public class LightInjectServiceScopeFactory : IServiceScopeFactory
+    internal class LightInjectServiceScopeFactory : IServiceScopeFactory
     {
         private readonly IServiceContainer container;
-        private ContainerPool containerPool;
+        private readonly ContainerPool containerPool;
 
         public LightInjectServiceScopeFactory(IServiceContainer container)
         {
-            this.container = container;            
+            this.container = container;
             containerPool = new ContainerPool(GetChildContainer);
         }
 
@@ -233,7 +304,7 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
-    public class LightInjectServiceScope : IServiceScope
+    internal class LightInjectServiceScope : IServiceScope
     {
         private readonly ContainerPool containerPool;
         private readonly IServiceContainer childContainer;
@@ -245,24 +316,22 @@ namespace LightInject.Microsoft.DependencyInjection
             ServiceProvider = new ChildServiceProvider(childContainer);
         }
 
+        public IServiceProvider ServiceProvider { get; }
+
         public void Dispose()
         {
             ((IDisposable)ServiceProvider).Dispose();
             containerPool.PutObject(childContainer);
         }
-
-        public IServiceProvider ServiceProvider { get; }
-
-        
     }
 
-    public class ContainerPool
+    internal class ContainerPool
     {
         private readonly ConcurrentBag<IServiceContainer> containers;
         private readonly Func<IServiceContainer> containerFactory;
 
         public ContainerPool(Func<IServiceContainer> containerFactory)
-        {            
+        {
             containers = new ConcurrentBag<IServiceContainer>();
             this.containerFactory = containerFactory;
         }
@@ -270,7 +339,11 @@ namespace LightInject.Microsoft.DependencyInjection
         public IServiceContainer GetContainer()
         {
             IServiceContainer item;
-            if (containers.TryTake(out item)) return item;
+            if (containers.TryTake(out item))
+            {
+                return item;
+            }
+
             return containerFactory();
         }
 
@@ -280,13 +353,13 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
-    public class PerContainerScopeManagerProvider : IScopeManagerProvider
+    internal class PerContainerScopeManagerProvider : IScopeManagerProvider
     {
         private readonly ScopeManager scopeManager = new ScopeManager();
 
         public ScopeManager GetScopeManager()
         {
-            return scopeManager;            
+            return scopeManager;
         }
     }
 }

@@ -14,25 +14,9 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
     public class LightInjectSpecificationTests : DependencyInjectionSpecificationTests
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
-        {
+        {         
             var container = new ServiceContainer();            
             return container.CreateServiceProvider(serviceCollection);            
-        }
-
-        //public void Test()
-        //{
-        //    // Arrange
-        //    var collection = new ServiceCollection();
-        //    collection.AddTransient(typeof(IFakeOpenGenericService<AnotherClass>), typeof(FakeService));
-        //    collection.AddTransient(typeof(IFakeOpenGenericService<>), typeof(FakeOpenGenericService<>));
-        //    collection.AddSingleton<AnotherClass>();
-        //    var provider = CreateServiceProvider(collection);
-
-        //    // Act
-        //    var service = provider.GetService<IFakeOpenGenericService<AnotherClass>>();
-
-        //    // Assert
-        //    Assert.IsType<FakeService>(service);
-        //}
+        }      
     }
 }
