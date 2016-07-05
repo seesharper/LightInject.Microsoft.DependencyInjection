@@ -73,43 +73,31 @@ namespace LightInject.Microsoft.DependencyInjection
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
             container.ScopeManagerProvider = new PerContainerScopeManagerProvider();
+
+            RegisterServices(container, serviceCollection);
+            return container.GetInstance<IServiceProvider>();
+        }
+
+        private static void RegisterServices(IServiceContainer container, IServiceCollection serviceCollection)
+        {
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
-            Dictionary<Type, List<ServiceRegistration>> services = new Dictionary<Type, List<ServiceRegistration>>();
-            foreach (var serviceDescriptor in serviceCollection)
-            {
-                var registration = CreateServiceRegistration(serviceDescriptor);
-                List<ServiceRegistration> existingRegistrations;
-                if (services.TryGetValue(serviceDescriptor.ServiceType, out existingRegistrations))
-                {
-                    foreach (var existingRegistration in existingRegistrations)
-                    {
-                        existingRegistration.ServiceName = Guid.NewGuid().ToString();
-                    }
+            var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();
 
-                    existingRegistrations.Add(registration);
-                }
-                else
+            var groupedRegistrations = registrations.GroupBy(sr => sr.ServiceType);
+            foreach (var groupedRegistration in groupedRegistrations)
+            {
+                groupedRegistration.Last().ServiceName = string.Empty;
+                if (!groupedRegistration.Key.GetTypeInfo().IsGenericType && groupedRegistration.Count() > 1)
                 {
-                    existingRegistrations = new List<ServiceRegistration>();
-                    existingRegistrations.Add(registration);
-                    services.Add(serviceDescriptor.ServiceType, existingRegistrations);
+                    container.Register(CreateEnumerableServiceRegistration(groupedRegistration.Key, groupedRegistration));
                 }
             }
 
-            var registrations = services.Values.SelectMany(s => s);
             foreach (var registration in registrations)
             {
                 container.Register(registration);
             }
-
-            var multipleRegistrations = services.Where(s => !s.Key.GetTypeInfo().IsGenericType && s.Value.Count > 0);
-            foreach (var multipleRegistration in multipleRegistrations)
-            {
-                container.Register(CreateEnumerableServiceRegistration(multipleRegistration.Key, multipleRegistration.Value));
-            }
-
-            return container.GetInstance<IServiceProvider>();
         }
 
         private static ServiceRegistration CreateEnumerableServiceRegistration(
@@ -167,35 +155,41 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private static ServiceRegistration CreateServiceRegistrationServiceType(ServiceDescriptor serviceDescriptor)
         {
-            ServiceRegistration registration = new ServiceRegistration();
-            registration.ServiceType = serviceDescriptor.ServiceType;
+            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor);
             registration.ImplementingType = serviceDescriptor.ImplementationType;
-            registration.Lifetime = ResolveLifetime(serviceDescriptor);
-            registration.ServiceName = string.Empty;
             return registration;
         }
 
         private static ServiceRegistration CreateServiceRegistrationForInstance(ServiceDescriptor serviceDescriptor)
         {
-            ServiceRegistration registration = new ServiceRegistration();
-            registration.ServiceType = serviceDescriptor.ServiceType;
-            registration.ServiceName = string.Empty;
+            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor);
             registration.Value = serviceDescriptor.ImplementationInstance;
             return registration;
         }
 
         private static ServiceRegistration CreateServiceRegistrationForFactoryDelegate(ServiceDescriptor serviceDescriptor)
         {
+            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor);
+            registration.FactoryExpression = CreateFactoryDelegate(serviceDescriptor);
+            return registration;
+        }
+
+        private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor)
+        {
             ServiceRegistration registration = new ServiceRegistration();
             registration.Lifetime = ResolveLifetime(serviceDescriptor);
-            registration.FactoryExpression = CreateFactoryDelegate(serviceDescriptor);
             registration.ServiceType = serviceDescriptor.ServiceType;
-            registration.ServiceName = string.Empty;
+            registration.ServiceName = Guid.NewGuid().ToString();
             return registration;
         }
 
         private static ILifetime ResolveLifetime(ServiceDescriptor serviceDescriptor)
         {
+            if (serviceDescriptor.ImplementationInstance != null)
+            {
+                return null;
+            }
+
             ILifetime lifetime = null;
 
             switch (serviceDescriptor.Lifetime)
