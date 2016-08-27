@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>LightInject.Microsoft.DependencyInjection.Source</id>
-        <version>1.0.0.1</version>
+        <version>1.1.0</version>
         <authors>Bernhard Richter</authors>
         <owners>Bernhard Richter</owners>
         <licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
@@ -13,7 +13,7 @@
         <copyright>Bernhard Richter</copyright>
         <tags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</tags>
         <dependencies>
-            <dependency id="LightInject.Source" version="4.0.11" />
+            <dependency id="LightInject.Source" version="4.1.0" />
         </dependencies>
     </metadata>
     <files>        
