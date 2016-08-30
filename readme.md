@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
 [![GitHub tag](https://img.shields.io/github/tag/seesharper/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
 
-[Changelog](changelog.md)
+[Changelog](https://github.com/seesharper/LightInject.Microsoft.DependencyInjection/blob/master/CHANGELOG.md)
 
 Enables **LightInject** to be used as the service container in ASP.NET Core and Entity Framework 7 applications.
  
