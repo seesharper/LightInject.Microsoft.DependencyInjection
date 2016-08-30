@@ -1,6 +1,9 @@
 # LightInject.Microsoft.DependencyInjection
+[![AppVeyor](https://img.shields.io/appveyor/ci/gruntjs/grunt.svg?maxAge=2592000)](https://ci.appveyor.com/project/seesharper/lightinject-microsoft-dependencyinjection)
+[![NuGet](https://img.shields.io/nuget/v/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
+[![GitHub tag](https://img.shields.io/github/tag/seesharper/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
 
-[![Build status](https://ci.appveyor.com/api/projects/status/opvt2on49ta4i8v4?svg=true)](https://ci.appveyor.com/project/seesharper/lightinject-microsoft-dependencyinjection)
+[Changelog](changelog.md)
 
 Enables **LightInject** to be used as the service container in ASP.NET Core and Entity Framework 7 applications.
  
