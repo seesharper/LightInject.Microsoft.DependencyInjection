@@ -86,9 +86,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <WCFMetadata Include="Service References\" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.csproj">
       <Project>{9fa61895-128c-4a3f-8dbe-676d5bfbee7f}</Project>
       <Name>LightInject.Microsoft.DependencyInjection</Name>
