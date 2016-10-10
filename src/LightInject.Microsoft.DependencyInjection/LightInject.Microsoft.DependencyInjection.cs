@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 1.1.1
+    LightInject.Microsoft.DependencyInjection version 2.0.0-RC1
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -38,7 +38,6 @@
 namespace LightInject.Microsoft.DependencyInjection
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Linq.Expressions;
@@ -72,15 +71,13 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>A configured <see cref="IServiceProvider"/>.</returns>
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
-            container.ScopeManagerProvider = new PerContainerScopeManagerProvider();
-
             RegisterServices(container, serviceCollection);
             return container.GetInstance<IServiceProvider>();
         }
 
         private static void RegisterServices(IServiceContainer container, IServiceCollection serviceCollection)
         {
-            container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
+            container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container.BeginScope()), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
             var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();
 
@@ -224,16 +221,13 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
-    internal class LightInjectServiceProvider : IServiceProvider, IDisposable
+    internal class LightInjectServiceProvider : IServiceProvider
     {
-        protected readonly Scope Scope;
-        protected bool isDisposed;
-        private readonly IServiceContainer serviceContainer;
+        private readonly IServiceFactory serviceFactory;
 
-        public LightInjectServiceProvider(IServiceContainer serviceContainer)
+        public LightInjectServiceProvider(IServiceFactory serviceFactory)
         {
-            this.serviceContainer = serviceContainer;
-            Scope = serviceContainer.BeginScope();
+            this.serviceFactory = serviceFactory;
         }
 
         /// <summary>
@@ -243,117 +237,40 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>An instance of the given <paramref name="serviceType"/>.</returns>
         public object GetService(Type serviceType)
         {
-            return serviceContainer.TryGetInstance(serviceType);
-        }
-
-        public virtual void Dispose()
-        {
-            if (!isDisposed)
-            {
-                isDisposed = true;
-                Scope.Dispose();
-                serviceContainer.Dispose();
-            }
-        }
-    }
-
-    internal class ChildServiceProvider : LightInjectServiceProvider
-    {
-        public ChildServiceProvider(IServiceContainer serviceContainer)
-            : base(serviceContainer)
-        {
-        }
-
-        public override void Dispose()
-        {
-            if (!isDisposed)
-            {
-                isDisposed = true;
-                Scope.Dispose();
-            }
+            return serviceFactory.TryGetInstance(serviceType);
         }
     }
 
     internal class LightInjectServiceScopeFactory : IServiceScopeFactory
     {
         private readonly IServiceContainer container;
-        private readonly ContainerPool containerPool;
 
         public LightInjectServiceScopeFactory(IServiceContainer container)
         {
             this.container = container;
-            containerPool = new ContainerPool(GetChildContainer);
         }
 
         public IServiceScope CreateScope()
         {
-            return new LightInjectServiceScope(containerPool);
-        }
-
-        private IServiceContainer GetChildContainer()
-        {
-            var childContainer = container.Clone();
-            childContainer.ScopeManagerProvider = new PerContainerScopeManagerProvider();
-            return childContainer;
+            return new LightInjectServiceScope(container.BeginScope());
         }
     }
 
     internal class LightInjectServiceScope : IServiceScope
     {
-        private readonly ContainerPool containerPool;
-        private readonly IServiceContainer childContainer;
+        private readonly Scope scope;
 
-        public LightInjectServiceScope(ContainerPool containerPool)
+        public LightInjectServiceScope(Scope scope)
         {
-            this.containerPool = containerPool;
-            childContainer = containerPool.GetContainer();
-            ServiceProvider = new ChildServiceProvider(childContainer);
+            this.scope = scope;
+            ServiceProvider = new LightInjectServiceProvider(scope);
         }
 
         public IServiceProvider ServiceProvider { get; }
 
         public void Dispose()
         {
-            ((IDisposable)ServiceProvider).Dispose();
-            containerPool.PutObject(childContainer);
-        }
-    }
-
-    internal class ContainerPool
-    {
-        private readonly ConcurrentBag<IServiceContainer> containers;
-        private readonly Func<IServiceContainer> containerFactory;
-
-        public ContainerPool(Func<IServiceContainer> containerFactory)
-        {
-            containers = new ConcurrentBag<IServiceContainer>();
-            this.containerFactory = containerFactory;
-        }
-
-        public IServiceContainer GetContainer()
-        {
-            IServiceContainer item;
-            if (containers.TryTake(out item))
-            {
-                return item;
-            }
-
-            return containerFactory();
-        }
-
-        public void PutObject(IServiceContainer container)
-        {
-            containers.Add(container);
-        }
-    }
-
-    internal class PerContainerScopeManagerProvider : IScopeManagerProvider
-    {
-        private readonly ScopeManager scopeManager = new ScopeManager();
-
-        public ScopeManager GetScopeManager()
-        {
-            return scopeManager;
+            scope.Dispose();
         }
     }
 }
