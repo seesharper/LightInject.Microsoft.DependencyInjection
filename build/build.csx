@@ -22,8 +22,8 @@ Execute(() => PatchPackagesConfig(), "Patching packages config");
 Execute(() => InternalizeSourceVersions(), "Internalizing source versions");
 Execute(() => RestoreNuGetPackages(), "NuGet");
 Execute(() => BuildAllFrameworks(), "Building all frameworks");
-//Execute(() => RunAllUnitTests(), "Running unit tests");
-//Execute(() => AnalyzeTestCoverage(), "Analyzing test coverage");
+Execute(() => RunAllUnitTests(), "Running unit tests");
+Execute(() => AnalyzeTestCoverage(), "Analyzing test coverage");
 Execute(() => CreateNugetPackages(), "Creating NuGet packages");
 
 private void CreateNugetPackages()
@@ -42,21 +42,13 @@ private void CreateNugetPackages()
 }
 
 private void CopySourceFilesToNuGetLibDirectory()
-{	
-	CopySourceFile("NET45", "net45");
-	CopySourceFile("NET46", "net46");		
-	CopySourceFile("NETSTANDARD11", "netstandard1.1");		
-	CopySourceFile("NETSTANDARD13", "netstandard1.3");	    
+{				
+	CopySourceFile("NETSTANDARD11", "netstandard1.1");				    
 }
 
 private void CopyBinaryFilesToNuGetLibDirectory()
-{
-	CopyBinaryFile("NET45", "net45");
-	CopyBinaryFile("NET46", "net46");	
-	CopyBinaryFile("NETSTANDARD11", "netstandard1.1");
-	CopyBinaryFile("NETSTANDARD13", "netstandard1.3");    
-    
-   		
+{	
+	CopyBinaryFile("NETSTANDARD11", "netstandard1.1");  		
 }
 
 private void CreateSourcePackage()
@@ -120,10 +112,7 @@ private void Build(string frameworkMoniker)
 private void BuildDotNet()
 {
 	string pathToProjectFile = Path.Combine(pathToBuildDirectory, @"netstandard11/Binary/LightInject.Microsoft.DependencyInjection/project.json");
-	DotNet.Build(pathToProjectFile, "netstandard1.1");
-	
-	pathToProjectFile = Path.Combine(pathToBuildDirectory, @"netstandard13/Binary/LightInject.Microsoft.DependencyInjection/project.json");
-	DotNet.Build(pathToProjectFile, "netstandard13");
+	DotNet.Build(pathToProjectFile, "netstandard1.1");		
 }
 
 private void RestoreNuGetPackages()

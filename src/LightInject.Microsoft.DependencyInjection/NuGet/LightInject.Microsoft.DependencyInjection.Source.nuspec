@@ -17,7 +17,6 @@
         </dependencies>
     </metadata>
     <files>        
-        <file src="content\net45\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" target="content\net45\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" />
-        <file src="content\net46\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" target="content\net46\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" />
+        <file src="content\netstandard1.1\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" target="content\netstandard1.1\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.cs.pp" />       
     </files>
 </package>
