@@ -4,14 +4,14 @@
 [![GitHub tag](https://img.shields.io/github/tag/seesharper/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
 
 Enables **LightInject** to be used as the service container in ASP.NET Core and Entity Framework 7 applications.
- 
+
 ## Installing
 ```
 "dependencies": {
   "LightInject.Microsoft.DependencyInjection": "<version>"
 }
 ```
-	
+
 ## Usage
 ```
 public class Startup
@@ -30,7 +30,15 @@ public class Startup
         });
     }
 }
-
 ```
+
+## Controllers
+
+By default, controllers are not actually created by *LightInject*. They are created by the ASP.NET infrastructure and uses LightInject to resolve its dependencies. To enable LightInject to create the controller instances, we need to add the following line.
+
+```csharp
+services.AddMvc().AddControllersAsServices();
+```
+
 
 
