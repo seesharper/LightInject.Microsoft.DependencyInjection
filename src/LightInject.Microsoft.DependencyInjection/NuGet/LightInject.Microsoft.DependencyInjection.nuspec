@@ -13,7 +13,7 @@
         <copyright>Bernhard Richter</copyright>
         <tags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</tags>
         <dependencies>            
-            <dependency id="LightInject" version="4.1.0" />
+            <dependency id="LightInject" version="5.0.0" />
             <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="1.0.0" />            
         </dependencies>
     </metadata>    

@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 2.0.0
+    LightInject.Microsoft.DependencyInjection version 2.0.1
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -42,6 +42,7 @@ namespace LightInject.Microsoft.DependencyInjection
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
+    using System.Threading;
     using global::Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
@@ -72,12 +73,13 @@ namespace LightInject.Microsoft.DependencyInjection
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
             RegisterServices(container, serviceCollection);
-            return container.GetInstance<IServiceProvider>();
+            return container.GetInstance<IServiceProvider>().CreateScope().ServiceProvider;
         }
 
         private static void RegisterServices(IServiceContainer container, IServiceCollection serviceCollection)
         {
-            container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container.BeginScope()), new PerContainerLifetime());
+            //container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container.BeginScope()), new PerContainerLifetime());
+            container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
             var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();
 
@@ -271,6 +273,44 @@ namespace LightInject.Microsoft.DependencyInjection
         public void Dispose()
         {
             scope.Dispose();
+        }
+    }
+
+    internal class StandaloneScopeManager : IScopeManager
+    {
+        private readonly ThreadLocal<Scope> currentScope = new ThreadLocal<Scope>();
+
+        public StandaloneScopeManager(IServiceFactory serviceFactory)
+        {
+            ServiceFactory = serviceFactory;
+        }
+
+        public Scope BeginScope()
+        {
+            var scope = new Scope(this, null);
+            currentScope.Value = scope;
+            return scope;
+        }
+
+        public void EndScope(Scope scope)
+        {
+            currentScope.Value = null;
+        }
+
+        public Scope CurrentScope
+        {
+            get { return currentScope.Value; }
+            set { currentScope.Value = value; }
+        }
+
+        public IServiceFactory ServiceFactory { get; }
+    }
+
+    public class StandaloneScopeManagerProvider : ScopeManagerProvider
+    {
+        protected override IScopeManager CreateScopeManager(IServiceFactory serviceFactory)
+        {
+            return new StandaloneScopeManager(serviceFactory);
         }
     }
 }
