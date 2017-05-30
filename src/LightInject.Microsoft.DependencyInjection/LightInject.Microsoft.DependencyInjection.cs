@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 2.0.1
+    LightInject.Microsoft.DependencyInjection version 2.0.2
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -42,7 +42,6 @@ namespace LightInject.Microsoft.DependencyInjection
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
-    using System.Threading;
     using global::Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
@@ -72,13 +71,12 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>A configured <see cref="IServiceProvider"/>.</returns>
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
-            RegisterServices(container, serviceCollection);
+            RegisterServices(container, serviceCollection);            
             return container.GetInstance<IServiceProvider>().CreateScope().ServiceProvider;
         }
 
         private static void RegisterServices(IServiceContainer container, IServiceCollection serviceCollection)
-        {
-            //container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container.BeginScope()), new PerContainerLifetime());
+        {            
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
             var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();
@@ -87,7 +85,7 @@ namespace LightInject.Microsoft.DependencyInjection
             foreach (var groupedRegistration in groupedRegistrations)
             {
                 groupedRegistration.Last().ServiceName = string.Empty;
-                if (!groupedRegistration.Key.GetTypeInfo().IsGenericType && groupedRegistration.Count() > 1)
+                if (!groupedRegistration.Key.GetTypeInfo().IsGenericTypeDefinition && groupedRegistration.Count() > 1)
                 {
                     container.Register(CreateEnumerableServiceRegistration(groupedRegistration.Key, groupedRegistration));
                 }

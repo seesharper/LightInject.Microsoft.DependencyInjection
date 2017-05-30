@@ -17,6 +17,6 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
         {         
             var container = new ServiceContainer();            
             return container.CreateServiceProvider(serviceCollection);            
-        }      
+        }                
     }
 }
