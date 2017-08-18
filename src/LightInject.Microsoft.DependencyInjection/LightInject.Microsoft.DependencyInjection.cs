@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 2.0.2
+    LightInject.Microsoft.DependencyInjection version 2.0.3
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -212,9 +212,9 @@ namespace LightInject.Microsoft.DependencyInjection
             return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
         }
 
-        private static Func<IServiceContainer, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
+        private static Func<IServiceFactory, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
         {
-            return container => (T)serviceDescriptor.ImplementationFactory(container.GetInstance<IServiceProvider>());
+            return serviceFactory => (T)serviceDescriptor.ImplementationFactory(serviceFactory.GetInstance<IServiceProvider>());
         }
     }
 
