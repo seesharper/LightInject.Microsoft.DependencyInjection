@@ -42,3 +42,19 @@ services.AddMvc().AddControllersAsServices();
 
 
 
+## .Net Core 2.0
+
+**Requirements:**
+
+* &gt;= LightInject 5.1.0
+* &gt;= LightInject.Microsoft.DependencyInjection 2.0.3
+
+In addition we need to turn of propertyinjection
+
+```c#
+var containerOptions = new ContainerOptions { EnablePropertyInjection = false } 
+var container = new ServiceContainer(containerOptions);
+```
+
+
+
