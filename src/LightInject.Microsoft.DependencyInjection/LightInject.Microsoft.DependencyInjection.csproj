@@ -9,7 +9,7 @@
     <RepositoryUrl>https://github.com/seesharper/LightInject.Microsoft.DependencyInjection</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</PackageTags>
-    <Version>2.0.4</Version>
+    <Version>2.0.5</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="LightInject" Version="5.1.0" />
