@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 2.0.4
+    LightInject.Microsoft.DependencyInjection version 2.0.5
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
