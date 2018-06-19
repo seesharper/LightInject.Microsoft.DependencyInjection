@@ -76,63 +76,17 @@ namespace LightInject.Microsoft.DependencyInjection
         }
 
         private static void RegisterServices(IServiceContainer container, IServiceCollection serviceCollection)
-        {            
+        {
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
-            var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();
+            var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();        
 
-            var groupedRegistrations = registrations.GroupBy(sr => sr.ServiceType);
-            foreach (var groupedRegistration in groupedRegistrations)
+            for (int i = 0; i < registrations.Count; i++)
             {
-                groupedRegistration.Last().ServiceName = string.Empty;
-                if (!groupedRegistration.Key.GetTypeInfo().IsGenericTypeDefinition && groupedRegistration.Count() > 1)
-                {
-                    container.Register(CreateEnumerableServiceRegistration(groupedRegistration.Key, groupedRegistration));
-                }
-            }
-
-            foreach (var registration in registrations)
-            {
+                ServiceRegistration registration = registrations[i];
+                registration.ServiceName = i.ToString().PadLeft(7, '0');
                 container.Register(registration);
             }
-        }
-
-        private static ServiceRegistration CreateEnumerableServiceRegistration(
-            Type elementType,
-            IEnumerable<ServiceRegistration> serviceRegistrations)
-        {
-            var serviceFactoryParameter = Expression.Parameter(typeof(IServiceFactory), "serviceFactory");
-            Type enumerableType = typeof(IEnumerable<>).MakeGenericType(elementType);
-            var getInstanceExpressions = new List<Expression>();
-
-            foreach (var serviceRegistration in serviceRegistrations)
-            {
-                getInstanceExpressions.Add(CreateGetInstanceExpression(serviceFactoryParameter, serviceRegistration.ServiceType, serviceRegistration.ServiceName));
-            }
-
-            var newArrayExpression = Expression.NewArrayInit(elementType, getInstanceExpressions);
-            var lambdaExpression = Expression.Lambda(newArrayExpression, serviceFactoryParameter);
-
-            ServiceRegistration enumerableRegistration = new ServiceRegistration();
-            enumerableRegistration.ServiceType = enumerableType;
-            enumerableRegistration.ServiceName = string.Empty;
-            enumerableRegistration.FactoryExpression = lambdaExpression.Compile();
-            return enumerableRegistration;
-        }
-
-        private static Expression CreateGetInstanceExpression(ParameterExpression serviceFactoryExpression, Type serviceType, string serviceName)
-        {
-            MethodCallExpression getInstanceMethodExpression;
-            if (serviceName == string.Empty)
-            {
-                getInstanceMethodExpression = Expression.Call(serviceFactoryExpression, GetInstanceMethod, Expression.Constant(serviceType));
-            }
-            else
-            {
-                getInstanceMethodExpression = Expression.Call(serviceFactoryExpression, GetNamedInstanceMethod, Expression.Constant(serviceType), Expression.Constant(serviceName));
-            }
-
-            return Expression.Convert(getInstanceMethodExpression, serviceType);
         }
 
         private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor)
@@ -221,13 +175,34 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
-    internal class LightInjectServiceProvider : IServiceProvider
+    internal class LightInjectServiceProvider : IServiceProvider, IDisposable
     {
         private readonly IServiceFactory serviceFactory;
+
+        private bool isDisposed = false;
 
         public LightInjectServiceProvider(IServiceFactory serviceFactory)
         {
             this.serviceFactory = serviceFactory;
+        }
+
+        public void Dispose()
+        {
+            if (isDisposed)
+            {
+                return;
+            }
+
+            isDisposed = true;           
+            //if (serviceFactory is ServiceContainer container)
+            //{
+            //    container.Dispose();
+            //}
+
+            if (serviceFactory is Scope scope)
+            {                
+                scope.Dispose();                
+            }
         }
 
         /// <summary>
@@ -252,7 +227,36 @@ namespace LightInject.Microsoft.DependencyInjection
 
         public IServiceScope CreateScope()
         {
-            return new LightInjectServiceScope(container.BeginScope());
+            var scope = container.BeginScope();
+            if (scope.ParentScope == null)
+            {
+                //scope.Completed += (s, e) => DisposeSingletons();
+                scope.Completed += (s, e) => container.Dispose();
+            }
+            return new LightInjectServiceScope(scope);
+        }     
+        
+        private void DisposeSingletons()
+        {
+            var disposableLifetimeInstances = container.AvailableServices
+                .Where(sr => sr.Lifetime != null
+                    && IsNotServiceFactory(sr.ServiceType))
+                .Select(sr => sr.Lifetime)
+                .Where(lt => lt is IDisposable).Cast<IDisposable>();
+            foreach (var disposableLifetimeInstance in disposableLifetimeInstances)
+            {
+                disposableLifetimeInstance.Dispose();
+            }
+
+            bool IsNotServiceFactory(Type serviceType)
+            {
+                return !typeof(IServiceFactory).GetTypeInfo().IsAssignableFrom(serviceType.GetTypeInfo());
+            }
+
+            bool IsNot(Type serviceType)
+            {
+                return !typeof(IServiceFactory).GetTypeInfo().IsAssignableFrom(serviceType.GetTypeInfo());
+            }
         }
     }
 
