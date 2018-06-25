@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 2.0.5
+    LightInject.Microsoft.DependencyInjection version 2.0.6
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -38,9 +38,8 @@
 namespace LightInject.Microsoft.DependencyInjection
 {
     using System;
-    using System.Collections.Generic;
+    using System.Globalization;
     using System.Linq;
-    using System.Linq.Expressions;
     using System.Reflection;
     using global::Microsoft.Extensions.DependencyInjection;
 
@@ -49,20 +48,6 @@ namespace LightInject.Microsoft.DependencyInjection
     /// </summary>
     public static class DependencyInjectionContainerExtensions
     {
-        private static readonly MethodInfo GetInstanceMethod;
-        private static readonly MethodInfo GetNamedInstanceMethod;
-
-        static DependencyInjectionContainerExtensions()
-        {
-            GetInstanceMethod =
-                typeof(IServiceFactory).GetTypeInfo().DeclaredMethods
-                    .Single(m => m.Name == "GetInstance" && !m.IsGenericMethod && m.GetParameters().Length == 1);
-            GetNamedInstanceMethod =
-                typeof(IServiceFactory)
-                    .GetTypeInfo().DeclaredMethods
-                    .Single(m => m.Name == "GetInstance" && !m.IsGenericMethod && m.GetParameters().Length == 2 && m.GetParameters().Last().ParameterType == typeof(string));
-        }
-
         /// <summary>
         /// Creates an <see cref="IServiceProvider"/> based on the given <paramref name="serviceCollection"/>.
         /// </summary>
@@ -71,70 +56,72 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>A configured <see cref="IServiceProvider"/>.</returns>
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
-            RegisterServices(container, serviceCollection);            
-            return container.GetInstance<IServiceProvider>().CreateScope().ServiceProvider;
-        }
-
-        private static void RegisterServices(IServiceContainer container, IServiceCollection serviceCollection)
-        {
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
-            var registrations = serviceCollection.Select(CreateServiceRegistration).ToList();        
+            var rootServiceScope = container.GetInstance<IServiceProvider>().CreateScope();
+            var rootScope = ((LightInjectServiceScope)rootServiceScope).Scope;
+            RegisterServices(container, rootScope, serviceCollection);
+            return rootServiceScope.ServiceProvider;
+        }
+
+        private static void RegisterServices(IServiceContainer container, Scope rootScope, IServiceCollection serviceCollection)
+        {
+            var registrations = serviceCollection.Select(d => CreateServiceRegistration(d, rootScope)).ToList();
 
             for (int i = 0; i < registrations.Count; i++)
             {
                 ServiceRegistration registration = registrations[i];
-                registration.ServiceName = i.ToString().PadLeft(7, '0');
+                registration.ServiceName = i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
                 container.Register(registration);
             }
         }
 
-        private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
             if (serviceDescriptor.ImplementationFactory != null)
             {
-                return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor);
+                return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
             }
 
             if (serviceDescriptor.ImplementationInstance != null)
             {
-                return CreateServiceRegistrationForInstance(serviceDescriptor);
+                return CreateServiceRegistrationForInstance(serviceDescriptor, rootScope);
             }
 
-            return CreateServiceRegistrationServiceType(serviceDescriptor);
+            return CreateServiceRegistrationServiceType(serviceDescriptor, rootScope);
         }
 
-        private static ServiceRegistration CreateServiceRegistrationServiceType(ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateServiceRegistrationServiceType(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
-            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor);
+            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
             registration.ImplementingType = serviceDescriptor.ImplementationType;
             return registration;
         }
 
-        private static ServiceRegistration CreateServiceRegistrationForInstance(ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateServiceRegistrationForInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
-            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor);
+            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
             registration.Value = serviceDescriptor.ImplementationInstance;
             return registration;
         }
 
-        private static ServiceRegistration CreateServiceRegistrationForFactoryDelegate(ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateServiceRegistrationForFactoryDelegate(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
-            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor);
+            ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
             registration.FactoryExpression = CreateFactoryDelegate(serviceDescriptor);
             return registration;
         }
 
-        private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor)
+        private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
             ServiceRegistration registration = new ServiceRegistration();
-            registration.Lifetime = ResolveLifetime(serviceDescriptor);
+            registration.Lifetime = ResolveLifetime(serviceDescriptor, rootScope);
             registration.ServiceType = serviceDescriptor.ServiceType;
             registration.ServiceName = Guid.NewGuid().ToString();
             return registration;
         }
 
-        private static ILifetime ResolveLifetime(ServiceDescriptor serviceDescriptor)
+        private static ILifetime ResolveLifetime(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
             if (serviceDescriptor.ImplementationInstance != null)
             {
@@ -149,7 +136,7 @@ namespace LightInject.Microsoft.DependencyInjection
                     lifetime = new PerScopeLifetime();
                     break;
                 case ServiceLifetime.Singleton:
-                    lifetime = new PerContainerLifetime();
+                    lifetime = new PerRootScopeLifetime(rootScope);
                     break;
                 case ServiceLifetime.Transient:
                     lifetime = new PerRequestLifeTime();
@@ -172,6 +159,8 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
+
+
     /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
@@ -181,6 +170,10 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private bool isDisposed = false;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LightInjectServiceProvider"/> class.
+        /// </summary>
+        /// <param name="serviceFactory">The underlying <see cref="IServiceFactory"/>.</param>
         public LightInjectServiceProvider(IServiceFactory serviceFactory)
         {
             this.serviceFactory = serviceFactory;
@@ -193,15 +186,13 @@ namespace LightInject.Microsoft.DependencyInjection
                 return;
             }
 
-            isDisposed = true;           
-            //if (serviceFactory is ServiceContainer container)
-            //{
-            //    container.Dispose();
-            //}
+           
+
+            isDisposed = true;
 
             if (serviceFactory is Scope scope)
-            {                
-                scope.Dispose();                
+            {
+                scope.Dispose();
             }
         }
 
@@ -216,65 +207,119 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
+    /// <summary>
+    /// An <see cref="IServiceScopeFactory"/> that uses an <see cref="IServiceContainer"/> to create new scopes.
+    /// </summary>
     internal class LightInjectServiceScopeFactory : IServiceScopeFactory
     {
         private readonly IServiceContainer container;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LightInjectServiceScopeFactory"/> class.
+        /// </summary>
+        /// <param name="container">The <see cref="IServiceContainer"/> used to create new scopes.</param>
         public LightInjectServiceScopeFactory(IServiceContainer container)
         {
             this.container = container;
         }
 
+        /// <inheritdoc/>
         public IServiceScope CreateScope()
         {
             var scope = container.BeginScope();
             if (scope.ParentScope == null)
             {
-                //scope.Completed += (s, e) => DisposeSingletons();
                 scope.Completed += (s, e) => container.Dispose();
             }
+
             return new LightInjectServiceScope(scope);
-        }     
-        
-        private void DisposeSingletons()
-        {
-            var disposableLifetimeInstances = container.AvailableServices
-                .Where(sr => sr.Lifetime != null
-                    && IsNotServiceFactory(sr.ServiceType))
-                .Select(sr => sr.Lifetime)
-                .Where(lt => lt is IDisposable).Cast<IDisposable>();
-            foreach (var disposableLifetimeInstance in disposableLifetimeInstances)
-            {
-                disposableLifetimeInstance.Dispose();
-            }
-
-            bool IsNotServiceFactory(Type serviceType)
-            {
-                return !typeof(IServiceFactory).GetTypeInfo().IsAssignableFrom(serviceType.GetTypeInfo());
-            }
-
-            bool IsNot(Type serviceType)
-            {
-                return !typeof(IServiceFactory).GetTypeInfo().IsAssignableFrom(serviceType.GetTypeInfo());
-            }
         }
     }
 
+    /// <summary>
+    /// An <see cref="IServiceScope"/> implementation that wraps a <see cref="Scope"/>.
+    /// </summary>
     internal class LightInjectServiceScope : IServiceScope
     {
-        private readonly Scope scope;
-
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LightInjectServiceScope"/> class.
+        /// </summary>
+        /// <param name="scope">The <see cref="Scope"/> wrapped by this class.</param>
         public LightInjectServiceScope(Scope scope)
         {
-            this.scope = scope;
+            Scope = scope;
             ServiceProvider = new LightInjectServiceProvider(scope);
         }
 
+        /// <inheritdoc/>
         public IServiceProvider ServiceProvider { get; }
 
+        /// <summary>
+        /// Gets the wrapped <see cref="Scope"/>.
+        /// </summary>
+        public Scope Scope { get; }
+
+        /// <summary>
+        /// Disposes the wrapped <see cref="Scope"/>.
+        /// </summary>
         public void Dispose()
         {
-            scope.Dispose();
+            Scope.Dispose();
         }
-    } 
+    }
+
+    /// <summary>
+    /// An <see cref="ILifetime"/> implementation that makes it possible to mimic the notion of a root scope.
+    /// </summary>
+    internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
+    {
+        private readonly ThreadSafeDictionary<Scope, object> instances = new ThreadSafeDictionary<Scope, object>();
+
+        private readonly Scope rootScope;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PerRootScopeLifetime"/> class.
+        /// </summary>
+        /// <param name="rootScope">The root <see cref="Scope"/>.</param>
+        public PerRootScopeLifetime(Scope rootScope)
+        {
+            this.rootScope = rootScope;
+        }
+
+        /// <inheritdoc/>
+        public object GetInstance(Func<object> createInstance, Scope scope)
+        {
+            return instances.GetOrAdd(rootScope, s => CreateScopedInstance(createInstance));
+        }
+
+        /// <inheritdoc/>
+        public ILifetime Clone()
+        {
+            return new PerRootScopeLifetime(rootScope);
+        }
+
+        private void RegisterForDisposal(object instance)
+        {
+            if (instance is IDisposable disposable)
+            {
+                rootScope.TrackInstance(disposable);
+            }
+        }
+
+        private object CreateScopedInstance(Func<object> createInstance)
+        {
+            rootScope.Completed += OnScopeCompleted;
+            var instance = createInstance();
+
+            RegisterForDisposal(instance);
+            return instance;
+        }
+
+        private void OnScopeCompleted(object sender, EventArgs e)
+        {
+            var scope = (Scope)sender;
+            scope.Completed -= OnScopeCompleted;
+            instances.TryRemove(scope, out object removedInstance);
+        }
+    }
 }
