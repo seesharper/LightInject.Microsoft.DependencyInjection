@@ -56,12 +56,11 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>A configured <see cref="IServiceProvider"/>.</returns>
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
-            container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerContainerLifetime());
-            container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerContainerLifetime());
-            var rootServiceScope = container.GetInstance<IServiceProvider>().CreateScope();
-            var rootScope = ((LightInjectServiceScope)rootServiceScope).Scope;
+            var rootScope = container.BeginScope();
+            container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerRootScopeLifetime(rootScope));
+            container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerRootScopeLifetime(rootScope));
             RegisterServices(container, rootScope, serviceCollection);
-            return rootServiceScope.ServiceProvider;
+            return new LightInjectServiceScope(rootScope).ServiceProvider;
         }
 
         private static void RegisterServices(IServiceContainer container, Scope rootScope, IServiceCollection serviceCollection)
@@ -159,8 +158,6 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
-
-
     /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
@@ -185,8 +182,6 @@ namespace LightInject.Microsoft.DependencyInjection
             {
                 return;
             }
-
-           
 
             isDisposed = true;
 
