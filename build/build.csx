@@ -1,15 +1,38 @@
-#! "netstandard1.6"
-#r "nuget:NetStandard.Library,1.6.1"
-#r "nuget:System.IO,4.3.0"
-#r "nuget:System.Xml.XmlDocument,4.3.0"
-#load "common.csx"
-#load "logging.csx"
+#load "nuget:Dotnet.Build, 0.3.8"
+#load "nuget:github-changelog, 0.1.5"
+#load "BuildContext.csx"
+using static FileUtils;
+using static xUnit;
+using static DotNet;
+using static ChangeLog;
+using static ReleaseManagement;
 
-Log.Create("Main").Info("Build starting");
-
-DotNet.Build(@"..\src\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.csproj");
-DotNet.Build(@"..\src\LightInject.Microsoft.DependencyInjection.Tests\LightInject.Microsoft.DependencyInjection.Tests.csproj");
-DotNet.Test(@"..\src\LightInject.Microsoft.DependencyInjection.Tests\LightInject.Microsoft.DependencyInjection.Tests.csproj");
-DotNet.Pack(@"..\src\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.csproj");
+Build(projectFolder, Git.Default.GetCurrentCommitHash());
+Test(testProjectFolder);
+// AnalyzeCodeCoverage(pathToTestAssembly, $"+[{projectName}]*");
+Pack(projectFolder, nuGetArtifactsFolder);
 
 
+if (BuildEnvironment.IsSecure)
+    {
+        await CreateReleaseNotes();
+
+        if (Git.Default.IsTagCommit())
+        {
+            Git.Default.RequreCleanWorkingTree();
+            await ReleaseManagerFor(owner, projectName,BuildEnvironment.GitHubAccessToken)
+            .CreateRelease(Git.Default.GetLatestTag(), pathToReleaseNotes, Array.Empty<ReleaseAsset>());
+            NuGet.TryPush(nuGetArtifactsFolder);            
+        }
+    }
+
+private async Task CreateReleaseNotes()
+{
+    Logger.Log("Creating release notes");        
+    var generator = ChangeLogFrom(owner, projectName, BuildEnvironment.GitHubAccessToken).SinceLatestTag();
+    if (!Git.Default.IsTagCommit())
+    {
+        generator = generator.IncludeUnreleased();        
+    }
+    await generator.Generate(pathToReleaseNotes, FormattingOptions.Default.WithPullRequestBody());
+}   
