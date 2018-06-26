@@ -159,6 +159,29 @@ namespace LightInject.Microsoft.DependencyInjection
     }
 
     /// <summary>
+    /// Creates a LightInject container builder.
+    /// </summary>
+    public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServiceContainer>
+    {
+        private IServiceCollection services;
+
+        /// <inheritdoc/>
+        public IServiceContainer CreateBuilder(IServiceCollection services)
+        {
+            this.services = services;
+            var serviceContainer = new ServiceContainer(new ContainerOptions { EnablePropertyInjection = false , DefaultServiceSelector = serviceNames => serviceNames.Last() });
+            return serviceContainer;
+        }
+
+        /// <inheritdoc/>
+        public IServiceProvider CreateServiceProvider(IServiceContainer containerBuilder)
+        {
+            var provider = containerBuilder.CreateServiceProvider(services);
+            return provider;
+        }
+    }
+
+    /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
     internal class LightInjectServiceProvider : IServiceProvider, IDisposable
@@ -221,11 +244,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <inheritdoc/>
         public IServiceScope CreateScope()
         {
-            var scope = container.BeginScope();
-            if (scope.ParentScope == null)
-            {
-                scope.Completed += (s, e) => container.Dispose();
-            }
+            var scope = container.BeginScope();            
 
             return new LightInjectServiceScope(scope);
         }
