@@ -1,21 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LightInject.Microsoft.DependencyInjection.Tests
+﻿namespace LightInject.Microsoft.DependencyInjection.Tests
 {
+    using System;
+    using System.Linq;
     using global::Microsoft.Extensions.DependencyInjection;
     using global::Microsoft.Extensions.DependencyInjection.Specification;
-    using global::Microsoft.Extensions.DependencyInjection.Specification.Fakes;
-    using Xunit;
 
     public class LightInjectSpecificationTests : DependencyInjectionSpecificationTests
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
-        {         
-            var container = new ServiceContainer();            
+        {                        
+            var container = new ServiceContainer(new ContainerOptions() { EnablePropertyInjection = false, DefaultServiceSelector = services => services.Last() });
             return container.CreateServiceProvider(serviceCollection);            
         }                
     }
