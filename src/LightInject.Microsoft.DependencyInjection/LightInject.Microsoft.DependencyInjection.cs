@@ -113,10 +113,12 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
-            ServiceRegistration registration = new ServiceRegistration();
-            registration.Lifetime = ResolveLifetime(serviceDescriptor, rootScope);
-            registration.ServiceType = serviceDescriptor.ServiceType;
-            registration.ServiceName = Guid.NewGuid().ToString();
+            ServiceRegistration registration = new ServiceRegistration
+            {
+                Lifetime = ResolveLifetime(serviceDescriptor, rootScope),
+                ServiceType = serviceDescriptor.ServiceType,
+                ServiceName = Guid.NewGuid().ToString(),
+            };
             return registration;
         }
 
@@ -169,7 +171,7 @@ namespace LightInject.Microsoft.DependencyInjection
         public IServiceContainer CreateBuilder(IServiceCollection services)
         {
             this.services = services;
-            var serviceContainer = new ServiceContainer(new ContainerOptions { EnablePropertyInjection = false , DefaultServiceSelector = serviceNames => serviceNames.Last() });
+            var serviceContainer = new ServiceContainer(new ContainerOptions { EnablePropertyInjection = false, DefaultServiceSelector = serviceNames => serviceNames.Last() });
             return serviceContainer;
         }
 
@@ -244,7 +246,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <inheritdoc/>
         public IServiceScope CreateScope()
         {
-            var scope = container.BeginScope();            
+            var scope = container.BeginScope();
 
             return new LightInjectServiceScope(scope);
         }

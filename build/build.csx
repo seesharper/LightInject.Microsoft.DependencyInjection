@@ -9,7 +9,6 @@ using static ReleaseManagement;
 
 Build(projectFolder, Git.Default.GetCurrentCommitHash());
 Test(testProjectFolder);
-// AnalyzeCodeCoverage(pathToTestAssembly, $"+[{projectName}]*");
 Pack(projectFolder, nuGetArtifactsFolder);
 
 
