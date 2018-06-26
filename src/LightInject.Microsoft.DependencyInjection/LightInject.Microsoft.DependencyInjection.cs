@@ -165,13 +165,33 @@ namespace LightInject.Microsoft.DependencyInjection
     /// </summary>
     public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServiceContainer>
     {
+        private readonly ContainerOptions options;
         private IServiceCollection services;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LightInjectServiceProviderFactory"/> class.
+        /// </summary>
+        public LightInjectServiceProviderFactory()
+            : this(ContainerOptions.Default)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LightInjectServiceProviderFactory"/> class.
+        /// </summary>
+        /// <param name="options">The <see cref="ContainerOptions"/> to be used when creating the <see cref="ServiceContainer"/>.</param>
+        public LightInjectServiceProviderFactory(ContainerOptions options)
+        {
+            options.DefaultServiceSelector = serviceNames => serviceNames.Last();
+            options.EnablePropertyInjection = false;
+            this.options = options;
+        }
 
         /// <inheritdoc/>
         public IServiceContainer CreateBuilder(IServiceCollection services)
         {
             this.services = services;
-            var serviceContainer = new ServiceContainer(new ContainerOptions { EnablePropertyInjection = false, DefaultServiceSelector = serviceNames => serviceNames.Last() });
+            var serviceContainer = new ServiceContainer(options);
             return serviceContainer;
         }
 
