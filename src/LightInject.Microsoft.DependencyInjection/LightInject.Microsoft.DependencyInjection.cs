@@ -183,7 +183,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <param name="options">The <see cref="ContainerOptions"/> to be used when creating the <see cref="ServiceContainer"/>.</param>
         public LightInjectServiceProviderFactory(ContainerOptions options)
         {
-            options.DefaultServiceSelector = serviceNames => serviceNames.Last();
+            options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
             options.EnablePropertyInjection = false;
             this.options = options;
         }

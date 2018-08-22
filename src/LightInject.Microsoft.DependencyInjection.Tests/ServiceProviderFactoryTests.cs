@@ -43,6 +43,23 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.True(DisposableFoo.IsDisposed);
         }
 
+        [Fact]
+        public void ShouldPickServiceWithoutServiceNameAsDefaultIfRegistered()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddTransient<string>(p => "42");
+            var factory = new LightInjectServiceProviderFactory();
+            var container = factory.CreateBuilder(serviceCollection);
+                        
+            container.Register<string>(f => "84");
+            var provider = container.CreateServiceProvider(serviceCollection);
+            var value = provider.GetService<string>();
+
+            Assert.Equal("84", value);
+        }
+
+        
+
         public class DisposableFoo : IDisposable
         {
             public static bool IsDisposed;
