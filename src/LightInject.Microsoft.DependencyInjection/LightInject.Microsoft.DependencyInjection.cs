@@ -57,6 +57,7 @@ namespace LightInject.Microsoft.DependencyInjection
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
             var rootScope = container.BeginScope();
+            rootScope.Completed += (a, s) => container.Dispose();
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerRootScopeLifetime(rootScope));
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerRootScopeLifetime(rootScope));
             RegisterServices(container, rootScope, serviceCollection);

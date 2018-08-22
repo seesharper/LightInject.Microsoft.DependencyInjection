@@ -27,5 +27,30 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             Assert.IsAssignableFrom<IServiceContainer>(container);
         }
+
+        [Fact]
+        public void ShouldDisposePerContainerServicesWhenProviderIsDisposed()
+        {
+            var serviceCollection = new ServiceCollection();            
+            var factory = new LightInjectServiceProviderFactory();
+            var container = factory.CreateBuilder(serviceCollection);
+            container.Register<DisposableFoo>(new PerContainerLifetime());
+            using (var provider = (IDisposable)container.CreateServiceProvider(serviceCollection))
+            {
+                ((IServiceProvider)provider).GetService<DisposableFoo>();
+            }
+
+            Assert.True(DisposableFoo.IsDisposed);
+        }
+
+        public class DisposableFoo : IDisposable
+        {
+            public static bool IsDisposed;
+
+            public void Dispose()
+            {
+                IsDisposed = true;
+            }
+        }
     }
 }
