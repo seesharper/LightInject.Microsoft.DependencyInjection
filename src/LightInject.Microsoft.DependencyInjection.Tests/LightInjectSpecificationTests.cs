@@ -8,8 +8,8 @@
     public class LightInjectSpecificationTests : DependencyInjectionSpecificationTests
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
-        {                        
-            var container = new ServiceContainer(new ContainerOptions() { EnablePropertyInjection = false, DefaultServiceSelector = services => services.Last() });
+        {
+            var container = new ServiceContainer(new ContainerOptions() { EnablePropertyInjection = false, DefaultServiceSelector = services => services.SingleOrDefault(string.IsNullOrWhiteSpace) ?? services.Last() });                        
             return container.CreateServiceProvider(serviceCollection);            
         }                
     }

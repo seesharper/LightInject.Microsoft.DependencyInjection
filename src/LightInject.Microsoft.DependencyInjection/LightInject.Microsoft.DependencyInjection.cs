@@ -57,6 +57,7 @@ namespace LightInject.Microsoft.DependencyInjection
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
             var rootScope = container.BeginScope();
+            rootScope.Completed += (a, s) => container.Dispose();
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerRootScopeLifetime(rootScope));
             container.Register<IServiceScopeFactory>(factory => new LightInjectServiceScopeFactory(container), new PerRootScopeLifetime(rootScope));
             RegisterServices(container, rootScope, serviceCollection);
@@ -182,7 +183,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <param name="options">The <see cref="ContainerOptions"/> to be used when creating the <see cref="ServiceContainer"/>.</param>
         public LightInjectServiceProviderFactory(ContainerOptions options)
         {
-            options.DefaultServiceSelector = serviceNames => serviceNames.Last();
+            options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
             options.EnablePropertyInjection = false;
             this.options = options;
         }
