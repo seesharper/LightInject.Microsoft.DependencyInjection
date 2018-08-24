@@ -173,7 +173,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// Initializes a new instance of the <see cref="LightInjectServiceProviderFactory"/> class.
         /// </summary>
         public LightInjectServiceProviderFactory()
-            : this(ContainerOptions.Default)
+            : this(new ContainerOptions())
         {
         }
 
