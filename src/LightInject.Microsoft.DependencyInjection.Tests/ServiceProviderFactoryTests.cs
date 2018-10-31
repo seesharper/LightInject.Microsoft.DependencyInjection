@@ -14,7 +14,7 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             var serviceCollection = new ServiceCollection();
             var factory = new LightInjectServiceProviderFactory();
             var container = factory.CreateBuilder(serviceCollection);
-            
+
         }
 
         [Fact]
@@ -29,9 +29,19 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
         }
 
         [Fact]
+        public void ShouldUseExistingContainer()
+        {
+            var serviceCollection = new ServiceCollection();
+            var container = new ServiceContainer(ContainerOptions.Default.WithMicrosoftSettings());
+            var factory = new LightInjectServiceProviderFactory(container);
+            var builder = factory.CreateBuilder(serviceCollection);
+            Assert.Same(container, builder);
+        }
+
+        [Fact]
         public void ShouldDisposePerContainerServicesWhenProviderIsDisposed()
         {
-            var serviceCollection = new ServiceCollection();            
+            var serviceCollection = new ServiceCollection();
             var factory = new LightInjectServiceProviderFactory();
             var container = factory.CreateBuilder(serviceCollection);
             container.Register<DisposableFoo>(new PerContainerLifetime());
@@ -50,7 +60,7 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             serviceCollection.AddTransient<string>(p => "42");
             var factory = new LightInjectServiceProviderFactory();
             var container = factory.CreateBuilder(serviceCollection);
-                        
+
             container.Register<string>(f => "84");
             var provider = container.CreateServiceProvider(serviceCollection);
             var value = provider.GetService<string>();
@@ -58,7 +68,7 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.Equal("84", value);
         }
 
-        
+
 
         public class DisposableFoo : IDisposable
         {
