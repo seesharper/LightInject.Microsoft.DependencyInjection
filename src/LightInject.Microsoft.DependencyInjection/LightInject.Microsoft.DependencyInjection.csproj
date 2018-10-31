@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <Authors>Bernhard Richter</Authors>    
+    <Authors>Bernhard Richter</Authors>
     <Description>Enables LightInject to be used as the service container in ASP.NET Core and Entity Framework 7 applications.</Description>
     <Copyright>Bernhard Richter</Copyright>
     <PackageLicenseUrl>http://opensource.org/licenses/MIT</PackageLicenseUrl>
@@ -9,8 +9,8 @@
     <RepositoryUrl>https://github.com/seesharper/LightInject.Microsoft.DependencyInjection</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</PackageTags>
-    <DebugType>Full</DebugType>  
-    <Version>2.0.8</Version>
+    <DebugType>Full</DebugType>
+    <Version>2.1.0</Version>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard2.0|AnyCPU'">
     <DocumentationFile>bin\Debug\netstandard2.0\LightInject.Microsoft.DependencyInjection.xml</DocumentationFile>
