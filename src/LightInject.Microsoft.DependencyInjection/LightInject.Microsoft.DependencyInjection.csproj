@@ -10,7 +10,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>Ioc Dependency-Injection Inversion-of-Control LightInject ASP.NET Entity-Framework</PackageTags>
     <DebugType>Full</DebugType>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard2.0|AnyCPU'">
     <DocumentationFile>bin\Debug\netstandard2.0\LightInject.Microsoft.DependencyInjection.xml</DocumentationFile>
@@ -19,7 +19,7 @@
     <DocumentationFile>bin\Release\netstandard2.0\LightInject.Microsoft.DependencyInjection.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LightInject" Version="5.1.4" />
+    <PackageReference Include="LightInject" Version="5.2.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.6.2-beta1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
