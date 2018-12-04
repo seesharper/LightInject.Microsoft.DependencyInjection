@@ -11,7 +11,7 @@
     </PackageReference>
     <PackageReference Include="LightInject" Version="5.2.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Specification.Tests" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Specification.Tests" Version="2.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
     <PackageReference Include="xunit" Version="2.3.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1">
