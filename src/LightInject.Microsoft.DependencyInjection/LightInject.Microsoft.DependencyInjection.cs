@@ -213,7 +213,6 @@ namespace LightInject.Microsoft.DependencyInjection
     /// </summary>
     public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServiceContainer>
     {
-        private readonly ContainerOptions options;
         private IServiceCollection services;
         private readonly Func<IServiceContainer> containerFactory;
 
