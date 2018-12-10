@@ -3,58 +3,29 @@
 [![NuGet](https://img.shields.io/nuget/v/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
 [![GitHub tag](https://img.shields.io/github/tag/seesharper/LightInject.Microsoft.DependencyInjection.svg?maxAge=2592000)]()
 
-Enables **LightInject** to be used as the service container in ASP.NET Core and Entity Framework 7 applications.
+Implements the [Microsoft.Extensions.DependencyInjection.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Abstractions/) and makes it possible to create an `IServiceProvider` that is 100% compatible with the [Microsoft.Extensions.DependencyInjection.Specification.Tests](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Specification.Tests). 
+
+> Note: This package is NOT meant to be used directly with AspNetCore applications. If the target application is an AspNetCore application, use the [LightInject.Microsoft.AspNetCore.Hosting](https://www.nuget.org/packages/LightInject.Microsoft.AspNetCore.Hosting/) package instead. 
 
 ## Installing
-```
-"dependencies": {
-  "LightInject.Microsoft.DependencyInjection": "<version>"
-}
+
+```shell
+dotnet add package LightInject.Microsoft.DependencyInjection
 ```
 
 ## Usage
-```
-public class Startup
-{       
-    public IServiceProvider ConfigureServices(IServiceCollection services)
-    {
-        var container = new ServiceContainer();
-        return container.CreateServiceProvider(services);
-    }
-    
-    public void Configure(IApplicationBuilder app)
-    {          
-        app.Run(async (context) =>
-        {
-            await context.Response.WriteAsync("Hello from LightInject");
-        });
-    }
-}
+```c#
+var services = new ServiceCollection();
+services.AddTransient<Foo>();
+var provider = services.CreateLightInjectServiceProvider();
 ```
 
-## Controllers
-
-By default, controllers are not actually created by *LightInject*. They are created by the ASP.NET infrastructure and uses LightInject to resolve its dependencies. To enable LightInject to create the controller instances, we need to add the following line.
-
-```csharp
-services.AddMvc().AddControllersAsServices();
-```
-
-
-
-## .Net Core 2.0
-
-**Requirements:**
-
-* &gt;= LightInject 5.1.0
-* &gt;= LightInject.Microsoft.DependencyInjection 2.0.3
-
-In addition we need to turn of propertyinjection
+It is also possible to create an `IServiceProvider` directly from an `IServiceContainer` instance.
 
 ```c#
-var containerOptions = new ContainerOptions { EnablePropertyInjection = false } 
-var container = new ServiceContainer(containerOptions);
+var container = new ServiceContainer(Options.Default.WithMicrosoftSettings);
+var provider = container.CreateServiceProvider();
 ```
 
-
+> Note: Make sure that the `Options.Default.WithMicrosoftSettings` is passed in as `options` when creating the container. This makes the provider compliant with the default provider from Microsoft. 
 

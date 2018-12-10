@@ -5,12 +5,17 @@
     "tasks": [
         {
             "label": "build",
-            "command": "dotnet build",
-            "type": "shell",
-            "group": "build",
-            "presentation": {
-                "reveal": "always"
+            "command": "dotnet",
+            "type": "process",
+            "group": {
+                "kind": "build",
+                "isDefault": true
             },
+            "args": [
+                "build",
+                "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Tests/LightInject.Microsoft.DependencyInjection.Tests.csproj",
+                "/property:GenerateFullPaths=true"
+            ],
             "problemMatcher": "$msCompile"
         },
         {

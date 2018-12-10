@@ -9,8 +9,7 @@
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
         {
-            var container = new ServiceContainer(new ContainerOptions() { EnablePropertyInjection = false, DefaultServiceSelector = services => services.SingleOrDefault(string.IsNullOrWhiteSpace) ?? services.Last() });                        
-            return container.CreateServiceProvider(serviceCollection);            
-        }                
+            return serviceCollection.CreateLightInjectServiceProvider();
+        }
     }
 }
