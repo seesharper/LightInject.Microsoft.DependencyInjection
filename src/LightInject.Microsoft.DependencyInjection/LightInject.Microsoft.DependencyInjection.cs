@@ -51,7 +51,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <summary>
         /// Create a new <see cref="IServiceProvider"/> from the given <paramref name="serviceCollection"/>.
         /// </summary>
-        /// <param name="serviceCollection">The <see cref="IServiceCollection"/> from which to create an <see cref="IServiceProvider"/></param>
+        /// <param name="serviceCollection">The <see cref="IServiceCollection"/> from which to create an <see cref="IServiceProvider"/>.</param>
         /// <returns>An <see cref="IServiceProvider"/> that is backed by an <see cref="IServiceContainer"/>.</returns>
         public static IServiceProvider CreateLightInjectServiceProvider(this IServiceCollection serviceCollection)
         {
@@ -61,7 +61,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <summary>
         /// Create a new <see cref="IServiceProvider"/> from the given <paramref name="serviceCollection"/>.
         /// </summary>
-        /// <param name="serviceCollection">The <see cref="IServiceCollection"/> from which to create an <see cref="IServiceProvider"/></param>
+        /// <param name="serviceCollection">The <see cref="IServiceCollection"/> from which to create an <see cref="IServiceProvider"/>.</param>
         /// <param name="options">The <see cref="ContainerOptions"/> to be used when creating the <see cref="ServiceContainer"/>.</param>
         /// <returns>An <see cref="IServiceProvider"/> that is backed by an <see cref="IServiceContainer"/>.</returns>
         public static IServiceProvider CreateLightInjectServiceProvider(this IServiceCollection serviceCollection, ContainerOptions options)
@@ -203,7 +203,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// Sets up the <see cref="ContainerOptions"/> to be compliant with the conventions used in Microsoft.Extensions.DependencyInjection.
         /// </summary>
         /// <param name="options">The target <see cref="ContainerOptions"/>.</param>
-        /// <returns><see cref="ContainerOptions"/></returns>
+        /// <returns><see cref="ContainerOptions"/>.</returns>
         public static ContainerOptions WithMicrosoftSettings(this ContainerOptions options)
         {
             options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
@@ -212,14 +212,14 @@ namespace LightInject.Microsoft.DependencyInjection
         }
     }
 
-
     /// <summary>
     /// Creates a LightInject container builder.
     /// </summary>
     public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServiceContainer>
     {
-        private IServiceCollection services;
         private readonly Func<IServiceContainer> containerFactory;
+
+        private IServiceCollection services;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LightInjectServiceProviderFactory"/> class.
@@ -246,7 +246,6 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             this.containerFactory = () => serviceContainer;
         }
-
 
         /// <inheritdoc/>
         public IServiceContainer CreateBuilder(IServiceCollection services)
