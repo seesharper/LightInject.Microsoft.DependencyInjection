@@ -84,6 +84,11 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>A configured <see cref="IServiceProvider"/>.</returns>
         public static IServiceProvider CreateServiceProvider(this IServiceContainer container, IServiceCollection serviceCollection)
         {
+            if (container.ScopeManagerProvider.GetScopeManager(container).CurrentScope != null)
+            {
+                throw new InvalidOperationException("CreateServiceProvider can only be called once per IServiceContainer instance.");
+            }
+
             var rootScope = container.BeginScope();
             rootScope.Completed += (a, s) => container.Dispose();
             container.Register<IServiceProvider>(factory => new LightInjectServiceProvider(container), new PerRootScopeLifetime(rootScope));
