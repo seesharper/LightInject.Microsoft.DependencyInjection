@@ -12,7 +12,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>portable</DebugType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>2.2.0</Version>
+    <Version>2.2.1</Version>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
