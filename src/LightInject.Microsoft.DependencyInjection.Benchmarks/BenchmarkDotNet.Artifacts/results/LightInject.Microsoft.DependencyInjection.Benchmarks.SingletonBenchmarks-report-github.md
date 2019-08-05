@@ -8,7 +8,7 @@ Intel Core i7-7820HQ CPU 2.90GHz (Kaby Lake), 1 CPU, 8 logical and 4 physical co
 
 
 ```
-|           Method |      Mean |     Error |    StdDev |
-|----------------- |----------:|----------:|----------:|
-| UsingLightInject | 126.86 ns | 1.3855 ns | 1.2282 ns |
-|   UsingMicrosoft |  46.09 ns | 0.3898 ns | 0.3646 ns |
+|           Method |     Mean |     Error |    StdDev |
+|----------------- |---------:|----------:|----------:|
+| UsingLightInject | 25.79 ns | 0.2702 ns | 0.2256 ns |
+|   UsingMicrosoft | 41.00 ns | 0.3502 ns | 0.3276 ns |
