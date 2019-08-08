@@ -45,13 +45,47 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             var factory = new LightInjectServiceProviderFactory();
             var container = factory.CreateBuilder(serviceCollection);
             container.Register<DisposableFoo>(new PerContainerLifetime());
+            DisposableFoo foo;
             using (var provider = (IDisposable)container.CreateServiceProvider(serviceCollection))
             {
-                ((IServiceProvider)provider).GetService<DisposableFoo>();
+                foo = ((IServiceProvider)provider).GetService<DisposableFoo>();
             }
 
-            Assert.True(DisposableFoo.IsDisposed);
+            Assert.True(foo.IsDisposed);
         }
+
+        [Fact]
+        public void ShouldDisposeRootScopeWhenProviderIsDisposed()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton<DisposableFoo>();
+            var factory = new LightInjectServiceProviderFactory();
+            var container = factory.CreateBuilder(serviceCollection);
+            var provider = factory.CreateServiceProvider(container);
+
+            var foo = provider.GetService<DisposableFoo>();
+            ((IDisposable)provider).Dispose();
+
+            Assert.True(foo.IsDisposed);
+        }
+
+        [Fact]
+        public void ShouldDisposeRootScopeWhenProviderRequestedFromContainerIsDisposed()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton<DisposableFoo>();
+
+            var factory = new LightInjectServiceProviderFactory(new ServiceContainer(ContainerOptions.Default.WithMicrosoftSettings()));
+            var container = factory.CreateBuilder(serviceCollection);
+            var provider = factory.CreateServiceProvider(container);
+            var requestedProvider = provider.GetService<IServiceProvider>();
+
+            var foo = provider.GetService<DisposableFoo>();
+            ((IDisposable)requestedProvider).Dispose();
+
+            Assert.True(foo.IsDisposed);
+        }
+
 
         [Fact]
         public void ShouldPickServiceWithoutServiceNameAsDefaultIfRegistered()
@@ -72,7 +106,7 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
         public class DisposableFoo : IDisposable
         {
-            public static bool IsDisposed;
+            public bool IsDisposed;
 
             public void Dispose()
             {
