@@ -16,5 +16,16 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             Assert.Throws<InvalidOperationException>(() => container.CreateServiceProvider(serviceCollection));
         }
+
+        [Fact]
+        public void ShouldThrowExceptionWhenProviderIsCreatedTwiceAndCurrentScopeIsDisabled()
+        {
+            var container = new ServiceContainer(c => c.EnableCurrentScope = false);
+            var serviceCollection = new ServiceCollection();
+
+            var provider = container.CreateServiceProvider(serviceCollection);
+
+            Assert.Throws<InvalidOperationException>(() => container.CreateServiceProvider(serviceCollection));
+        }
     }
 }

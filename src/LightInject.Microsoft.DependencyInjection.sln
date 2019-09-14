@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightInject.Microsoft.Depen
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LightInject.Microsoft.DependencyInjection.Tests", "LightInject.Microsoft.DependencyInjection.Tests\LightInject.Microsoft.DependencyInjection.Tests.csproj", "{316E8DE6-85AF-4A8F-995F-3B639BECA470}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightInject.Microsoft.DependencyInjection.Benchmarks", "LightInject.Microsoft.DependencyInjection.Benchmarks\LightInject.Microsoft.DependencyInjection.Benchmarks.csproj", "{29172155-A3C3-4475-9738-BE8800A68D1F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{316E8DE6-85AF-4A8F-995F-3B639BECA470}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{316E8DE6-85AF-4A8F-995F-3B639BECA470}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{316E8DE6-85AF-4A8F-995F-3B639BECA470}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29172155-A3C3-4475-9738-BE8800A68D1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29172155-A3C3-4475-9738-BE8800A68D1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29172155-A3C3-4475-9738-BE8800A68D1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29172155-A3C3-4475-9738-BE8800A68D1F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

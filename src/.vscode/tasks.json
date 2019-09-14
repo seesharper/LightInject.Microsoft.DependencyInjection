@@ -1,8 +1,43 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Benchmarks/LightInject.Microsoft.DependencyInjection.Benchmarks.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Benchmarks/LightInject.Microsoft.DependencyInjection.Benchmarks.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Benchmarks/LightInject.Microsoft.DependencyInjection.Benchmarks.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
         {
             "label": "build",
             "command": "dotnet",
@@ -22,12 +57,11 @@
             "label": "test",
             "command": "dotnet",
             "type": "process",
-            "args":
-                [
+            "args": [
                 "test",
                 "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Tests/LightInject.Microsoft.DependencyInjection.Tests.csproj"
-                ],
-             "problemMatcher": "$msCompile",
+            ],
+            "problemMatcher": "$msCompile",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -50,6 +84,5 @@
                 "isDefault": true
             }
         }
-
     ]
 }

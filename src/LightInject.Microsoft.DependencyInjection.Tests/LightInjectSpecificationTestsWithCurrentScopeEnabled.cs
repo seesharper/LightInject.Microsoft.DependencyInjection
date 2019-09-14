@@ -4,11 +4,11 @@
     using global::Microsoft.Extensions.DependencyInjection;
     using global::Microsoft.Extensions.DependencyInjection.Specification;
 
-    public class LightInjectSpecificationTests : DependencyInjectionSpecificationTests
+    public class LightInjectSpecificationTestsWithCurrentScopeEnabled : DependencyInjectionSpecificationTests
     {
         protected override IServiceProvider CreateServiceProvider(IServiceCollection serviceCollection)
         {
-            return serviceCollection.CreateLightInjectServiceProvider(new ContainerOptions() { EnableCurrentScope = false });
+            return serviceCollection.CreateLightInjectServiceProvider(new ContainerOptions() { EnableCurrentScope = true });
         }
     }
 }
