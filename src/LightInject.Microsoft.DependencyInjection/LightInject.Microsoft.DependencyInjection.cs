@@ -283,8 +283,7 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             var clonedOptions = options.Clone();
             clonedOptions.WithMicrosoftSettings();
-            var container = new ServiceContainer(options);
-            containerFactory = () => new ServiceContainer(options);
+            containerFactory = () => new ServiceContainer(clonedOptions);
         }
 
         /// <summary>
@@ -295,7 +294,6 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             var options = ContainerOptions.Default.Clone().WithMicrosoftSettings();
             configureOptions(options);
-            var container = new ServiceContainer(options);
             containerFactory = () => new ServiceContainer(options);
         }
 
