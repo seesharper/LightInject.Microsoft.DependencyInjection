@@ -1,0 +1,23 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install .Net Core 3.0
+        uses: rojepp/setup-dotnet@fix_dotnet_root
+        with:
+          dotnet-version: 3.0.100
+      - name: Install dotnet-script
+        run: dotnet tool install dotnet-script --tool-path dotnet-script-tool
+
+      - name: Run build script
+        run: dotnet-script-tool/dotnet-script build/build.csx
+        env: # Or as an environment variable
+          GITHUB_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IS_SECURE_BUILDENVIRONMENT: ${{ secrets.IS_SECURE_BUILDENVIRONMENT }}
+          NUGET_APIKEY: ${{ secrets.NUGET_APIKEY }}
