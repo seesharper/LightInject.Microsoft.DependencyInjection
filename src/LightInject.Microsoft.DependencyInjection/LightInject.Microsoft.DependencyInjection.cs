@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 3.1.0
+    LightInject.Microsoft.DependencyInjection version 3.1.2
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -174,11 +174,6 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private static ILifetime ResolveLifetime(ServiceDescriptor serviceDescriptor, Scope rootScope)
         {
-            if (serviceDescriptor.ImplementationInstance != null)
-            {
-                return null;
-            }
-
             ILifetime lifetime = null;
 
             switch (serviceDescriptor.Lifetime)
@@ -422,6 +417,7 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="ILifetime"/> implementation that makes it possible to mimic the notion of a root scope.
     /// </summary>
+    [LifeSpan(30)]
     internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
     {
         private readonly object syncRoot = new object();
