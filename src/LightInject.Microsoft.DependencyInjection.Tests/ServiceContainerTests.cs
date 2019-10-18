@@ -27,5 +27,16 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             Assert.Throws<InvalidOperationException>(() => container.CreateServiceProvider(serviceCollection));
         }
+
+        [Fact]
+        public void ShouldCallConfigureActionWhenCreatingServiceProvider()
+        {
+            bool wasCalled = false;
+
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.CreateLightInjectServiceProvider(o => wasCalled = true);
+
+            Assert.True(wasCalled);
+        }
     }
 }

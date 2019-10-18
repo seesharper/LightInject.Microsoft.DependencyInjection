@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 3.1.2
+    LightInject.Microsoft.DependencyInjection version 3.2.0
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -241,7 +241,7 @@ namespace LightInject.Microsoft.DependencyInjection
         /// Creates a clone of the given paramref name="containerOptions".
         /// </summary>
         /// <param name="containerOptions">The <see cref="ContainerOptions"/> for which to create a clone.</param>
-        /// <returns></returns>
+        /// <returns>A clone of the given paramref name="containerOptions".</returns>
         public static ContainerOptions Clone(this ContainerOptions containerOptions) => new ContainerOptions()
         {
             DefaultServiceSelector = containerOptions.DefaultServiceSelector,
@@ -249,7 +249,7 @@ namespace LightInject.Microsoft.DependencyInjection
             EnablePropertyInjection = containerOptions.EnablePropertyInjection,
             EnableVariance = containerOptions.EnableVariance,
             LogFactory = containerOptions.LogFactory,
-            VarianceFilter = containerOptions.VarianceFilter
+            VarianceFilter = containerOptions.VarianceFilter,
         };
     }
 
@@ -435,6 +435,7 @@ namespace LightInject.Microsoft.DependencyInjection
         }
 
         /// <inheritdoc/>
+        [ExcludeFromCodeCoverage]
         public object GetInstance(Func<object> createInstance, Scope scope)
         {
             throw new NotImplementedException("Uses optimized non closing method");

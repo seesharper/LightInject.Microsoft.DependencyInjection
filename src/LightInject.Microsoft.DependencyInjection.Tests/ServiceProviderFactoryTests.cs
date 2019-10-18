@@ -102,6 +102,13 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.Equal("84", value);
         }
 
+        [Fact]
+        public void ShouldCallConfigureAction()
+        {
+            bool wasCalled = false;
+            var factory = new LightInjectServiceProviderFactory(o => wasCalled = true);
+            Assert.True(wasCalled);
+        }
 
 
         public class DisposableFoo : IDisposable
