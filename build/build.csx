@@ -1,4 +1,4 @@
-#load "nuget:Dotnet.Build, 0.8.1"
+#load "nuget:Dotnet.Build, 0.9.0"
 #load "nuget:dotnet-steps, 0.0.2"
 
 [StepDescription("Runs the tests with test coverage")]
