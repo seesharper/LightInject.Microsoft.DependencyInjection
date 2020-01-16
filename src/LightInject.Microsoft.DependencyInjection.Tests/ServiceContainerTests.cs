@@ -38,5 +38,42 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             Assert.True(wasCalled);
         }
+
+        [Fact]
+        public void ShouldNotUseRootScopeForFactoryDelegate()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddScoped<DerivedFoo>();
+
+            serviceCollection.AddScoped<Foo>(sp =>
+            {
+                return sp.GetService<DerivedFoo>();
+            });
+
+            var provider = serviceCollection.CreateLightInjectServiceProvider(options => options.EnableCurrentScope = false);
+
+            Foo firstFoo;
+            Foo secondFoo;
+
+            using (var serviceScope = provider.CreateScope())
+            {
+                firstFoo = serviceScope.ServiceProvider.GetService<Foo>();
+            }
+
+            using (var serviceScope = provider.CreateScope())
+            {
+                secondFoo = serviceScope.ServiceProvider.GetService<Foo>();
+            }
+
+            Assert.NotSame(firstFoo, secondFoo);
+        }
+
+        public class Foo
+        {
+        }
+
+        public class DerivedFoo : Foo
+        {
+        }
     }
 }
