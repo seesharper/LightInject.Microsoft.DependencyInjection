@@ -216,7 +216,8 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private static Func<IServiceFactory, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
         {
-            return serviceFactory => (T)serviceDescriptor.ImplementationFactory(serviceFactory.GetInstance<IServiceProvider>());
+            //return serviceFactory => (T)serviceDescriptor.ImplementationFactory(serviceFactory.GetInstance<IServiceProvider>());
+            return serviceFactory => (T)serviceDescriptor.ImplementationFactory(new LightInjectServiceProvider(serviceFactory));
         }
     }
 
