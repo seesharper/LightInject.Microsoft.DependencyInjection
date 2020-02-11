@@ -68,12 +68,56 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.NotSame(firstFoo, secondFoo);
         }
 
+
+        [Fact]
+        public void SingletonServiceCanBeResolvedFromScope()
+        {
+            // Arrange
+            var collection = new ServiceCollection();
+            collection.AddSingleton<ClassWithServiceProvider>();
+            var provider = collection.CreateLightInjectServiceProvider();
+
+            // Act
+            IServiceProvider scopedSp1 = null;
+            IServiceProvider scopedSp2 = null;
+            ClassWithServiceProvider instance1 = null;
+            ClassWithServiceProvider instance2 = null;
+
+            using (var scope1 = provider.CreateScope())
+            {
+                scopedSp1 = scope1.ServiceProvider;
+                instance1 = scope1.ServiceProvider.GetRequiredService<ClassWithServiceProvider>();
+            }
+
+            using (var scope2 = provider.CreateScope())
+            {
+                scopedSp2 = scope2.ServiceProvider;
+                instance2 = scope2.ServiceProvider.GetRequiredService<ClassWithServiceProvider>();
+            }
+
+            // Assert
+            Assert.Same(instance1.ServiceProvider, instance2.ServiceProvider);
+            Assert.NotSame(instance1.ServiceProvider, scopedSp1);
+            Assert.NotSame(instance2.ServiceProvider, scopedSp2);
+        }
+
+
         public class Foo
         {
         }
 
         public class DerivedFoo : Foo
         {
+        }
+
+        public class ClassWithServiceProvider
+        {
+            public ClassWithServiceProvider(IServiceProvider serviceProvider)
+            {
+                ServiceProvider = serviceProvider;
+            }
+
+            public IServiceProvider ServiceProvider { get; }
         }
     }
 }
