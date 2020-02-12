@@ -235,6 +235,7 @@ namespace LightInject.Microsoft.DependencyInjection
         {
             options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
             options.EnablePropertyInjection = false;
+            options.EnableCurrentScope = false;
             return options;
         }
 
