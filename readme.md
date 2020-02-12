@@ -5,7 +5,7 @@
 
 Implements the [Microsoft.Extensions.DependencyInjection.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Abstractions/) and makes it possible to create an `IServiceProvider` that is 100% compatible with the [Microsoft.Extensions.DependencyInjection.Specification.Tests](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Specification.Tests). 
 
-> Note: This package is NOT meant to be used directly with AspNetCore applications. If the target application is an AspNetCore application, use the [LightInject.Microsoft.AspNetCore.Hosting](https://www.nuget.org/packages/LightInject.Microsoft.AspNetCore.Hosting/) package instead. 
+> Note: This package is NOT meant to be used directly with AspNetCore applications. If the target application is an AspNetCore application, use the [LightInject.Microsoft.Hosting](https://www.nuget.org/packages/LightInject.Microsoft.Hosting/) package instead. 
 
 ## Installing
 
