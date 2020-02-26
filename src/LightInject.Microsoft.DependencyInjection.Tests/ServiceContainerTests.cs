@@ -102,6 +102,17 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
         }
 
 
+        [Fact]
+        public void ShouldHandleDefaultArgument()
+        {
+            var collection = new ServiceCollection();
+            collection.AddTransient<ClassWithDefaultStringArgument>();
+            var provider = collection.CreateLightInjectServiceProvider();
+
+            var instance = provider.GetService<ClassWithDefaultStringArgument>();
+            Assert.Equal("42", instance.Value);
+        }
+
         public class Foo
         {
         }
@@ -118,6 +129,16 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             }
 
             public IServiceProvider ServiceProvider { get; }
+        }
+
+        public class ClassWithDefaultStringArgument
+        {
+            public ClassWithDefaultStringArgument(string value = "42")
+            {
+                Value = value;
+            }
+
+            public string Value { get; }
         }
     }
 }
