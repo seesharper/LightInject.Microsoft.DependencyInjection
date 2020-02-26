@@ -236,6 +236,7 @@ namespace LightInject.Microsoft.DependencyInjection
             options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
             options.EnablePropertyInjection = false;
             options.EnableCurrentScope = false;
+            options.EnableOptionalArguments = true;
             return options;
         }
 
@@ -252,6 +253,7 @@ namespace LightInject.Microsoft.DependencyInjection
             EnableVariance = containerOptions.EnableVariance,
             LogFactory = containerOptions.LogFactory,
             VarianceFilter = containerOptions.VarianceFilter,
+            EnableOptionalArguments = containerOptions.EnableOptionalArguments
         };
     }
 
