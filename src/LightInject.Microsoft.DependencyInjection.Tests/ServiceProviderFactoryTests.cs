@@ -108,6 +108,8 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             bool wasCalled = false;
             var factory = new LightInjectServiceProviderFactory(o => wasCalled = true);
             Assert.True(wasCalled);
+            var container = factory.CreateBuilder(new ServiceCollection());
+            Assert.IsType<ServiceContainer>(container);
         }
 
 
