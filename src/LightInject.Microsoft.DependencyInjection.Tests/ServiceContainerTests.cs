@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -113,6 +114,48 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.Equal("42", instance.Value);
         }
 
+        [Fact]
+        public void ShouldHandleCorrectScopeWhenInjectedAlongWithHttpClient()
+        {
+            var collection = new ServiceCollection();
+            collection.AddScoped<IScoped>(sp => new Scoped());
+            collection.AddHttpClient<MyClient>();
+            var provider = collection.CreateLightInjectServiceProvider();
+            IScoped firstScoped;
+            IScoped secondScoped;
+            using (var scope1 = provider.CreateScope())
+            {
+                var instance = scope1.ServiceProvider.GetService<MyClient>();
+                firstScoped = instance.Scoped;
+            }
+
+            using (var scope2 = provider.CreateScope())
+            {
+                var instance = scope2.ServiceProvider.GetService<MyClient>();
+                secondScoped = instance.Scoped;
+            }
+
+            Assert.NotSame(firstScoped, secondScoped);
+        }
+
+
+
+        public class MyClient
+        {
+            public MyClient(HttpClient httpClient, IScoped scoped)
+            {
+                Scoped = scoped;
+            }
+
+            public IScoped Scoped { get; }
+        }
+
+
+        public interface IFoo
+        {
+
+        }
+
         public class Foo
         {
         }
@@ -140,5 +183,51 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             public string Value { get; }
         }
+
+
+
+        public interface IScoped
+        {
+
+        }
+
+        public class Scoped : IScoped
+        {
+            public static int InstanceCount;
+
+            public Scoped()
+            {
+                InstanceCount++;
+            }
+        }
+    }
+
+
+    public class Foo
+    {
+    }
+
+    public class DerivedFoo : Foo
+    {
+    }
+
+    public class ClassWithServiceProvider
+    {
+        public ClassWithServiceProvider(IServiceProvider serviceProvider)
+        {
+            ServiceProvider = serviceProvider;
+        }
+
+        public IServiceProvider ServiceProvider { get; }
+    }
+
+    public class ClassWithDefaultStringArgument
+    {
+        public ClassWithDefaultStringArgument(string value = "42")
+        {
+            Value = value;
+        }
+
+        public string Value { get; }
     }
 }
