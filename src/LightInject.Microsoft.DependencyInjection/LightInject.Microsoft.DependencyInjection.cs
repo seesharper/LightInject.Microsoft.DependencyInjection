@@ -38,6 +38,7 @@
 namespace LightInject.Microsoft.DependencyInjection
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Globalization;
     using System.Linq;
     using System.Reflection;
@@ -107,7 +108,7 @@ namespace LightInject.Microsoft.DependencyInjection
 
             var rootScope = container.BeginScope();
             rootScope.Completed += (a, s) => container.Dispose();
-            container.RegisterSingleton<IServiceProvider>(f => new LightInjectServiceProvider(rootScope));
+            container.RegisterScoped<IServiceProvider>(f => new LightInjectServiceProvider(f));
             container.RegisterSingleton<IServiceScopeFactory>(f => new LightInjectServiceScopeFactory(container));
             RegisterServices(container, rootScope, serviceCollection);
             return new LightInjectServiceScope(rootScope).ServiceProvider;
@@ -216,8 +217,17 @@ namespace LightInject.Microsoft.DependencyInjection
 
         private static Func<IServiceFactory, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
         {
+
+
             //return serviceFactory => (T)serviceDescriptor.ImplementationFactory(serviceFactory.GetInstance<IServiceProvider>());
-            return serviceFactory => (T)serviceDescriptor.ImplementationFactory(new LightInjectServiceProvider(serviceFactory));
+            return serviceFactory =>
+            {
+                if (serviceDescriptor.ServiceType.Name == "IScoped")
+                {
+
+                }
+                return (T)serviceDescriptor.ImplementationFactory(new LightInjectServiceProvider(serviceFactory));
+            };
         }
     }
 
@@ -360,6 +370,11 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <returns>An instance of the given <paramref name="serviceType"/>.</returns>
         public object GetService(Type serviceType)
         {
+            if (serviceType.Name == "IScoped")
+            {
+
+            }
+
             return serviceFactory.TryGetInstance(serviceType);
         }
     }
@@ -394,6 +409,10 @@ namespace LightInject.Microsoft.DependencyInjection
     /// </summary>
     internal class LightInjectServiceScope : IServiceScope
     {
+        private static int ScopeCount;
+
+        public readonly int ScopeId;
+
         private readonly Scope wrappedScope;
 
         /// <summary>
@@ -402,6 +421,9 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <param name="scope">The <see cref="Scope"/> wrapped by this class.</param>
         public LightInjectServiceScope(Scope scope)
         {
+            ScopeCount++;
+            ScopeId = ScopeCount;
+
             wrappedScope = scope;
             ServiceProvider = new LightInjectServiceProvider(scope);
         }
@@ -463,7 +485,7 @@ namespace LightInject.Microsoft.DependencyInjection
             {
                 if (instance == null)
                 {
-                    instance = createInstance(arguments, rootScope);
+                    instance = createInstance(arguments, scope);
                     RegisterForDisposal(instance);
                 }
             }

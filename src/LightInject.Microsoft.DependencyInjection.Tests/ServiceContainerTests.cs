@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -113,6 +114,74 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.Equal("42", instance.Value);
         }
 
+        [Fact]
+        public void Test()
+        {
+            var collection = new ServiceCollection();
+            collection.AddTransient<IFoo, FooWithTransientAndScopedDependency>();
+            collection.AddScoped<IScoped>(sp => new Scoped());
+            collection.AddTransient<ITransient>(sp => new Transient());
+            collection.AddHttpClient<MyClient>();
+            var provider = collection.CreateLightInjectServiceProvider();
+            //var provider = collection.BuildServiceProvider();
+            using (var scope1 = provider.CreateScope())
+            {
+                var instance = scope1.ServiceProvider.GetService<MyClient>();
+            }
+
+            using (var scope2 = provider.CreateScope())
+            {
+                var instance = scope2.ServiceProvider.GetService<MyClient>();
+            }
+        }
+
+
+
+        [Fact]
+        public void Test2()
+        {
+            var collection = new ServiceCollection();
+            collection.AddTransient<IFoo>(sp =>
+            {
+                using (var scope = sp.CreateScope())
+                {
+                    return new FooWithTransientAndScopedDependency(sp.GetService<ITransient>(), sp.GetService<IScoped>());
+                }
+
+            });
+            collection.AddScoped<IScoped>(sp => new Scoped());
+            collection.AddTransient<ITransient, Transient>();
+
+            var provider = collection.CreateLightInjectServiceProvider();
+            using (var scope = provider.CreateScope())
+            {
+                var instance = scope.ServiceProvider.GetService<IFoo>();
+            }
+
+            using (var scope = provider.CreateScope())
+            {
+                var instance = scope.ServiceProvider.GetService<IFoo>();
+            }
+        }
+
+
+
+
+
+        public class MyClient
+        {
+            public MyClient(HttpClient httpClient, IScoped scoped)
+            {
+
+            }
+        }
+
+
+        public interface IFoo
+        {
+
+        }
+
         public class Foo
         {
         }
@@ -140,5 +209,71 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             public string Value { get; }
         }
+
+        public class FooWithTransientAndScopedDependency : IFoo
+        {
+            public FooWithTransientAndScopedDependency(ITransient transient, IScoped scoped)
+            {
+            }
+        }
+
+        public interface ITransient
+        {
+
+        }
+
+        public class Transient : ITransient
+        {
+            public static int InstanceCount;
+
+            public Transient()
+            {
+                InstanceCount++;
+            }
+        }
+
+        public interface IScoped
+        {
+
+        }
+
+        public class Scoped : IScoped
+        {
+            public static int InstanceCount;
+
+            public Scoped()
+            {
+                InstanceCount++;
+            }
+        }
+    }
+
+
+    public class Foo
+    {
+    }
+
+    public class DerivedFoo : Foo
+    {
+    }
+
+    public class ClassWithServiceProvider
+    {
+        public ClassWithServiceProvider(IServiceProvider serviceProvider)
+        {
+            ServiceProvider = serviceProvider;
+        }
+
+        public IServiceProvider ServiceProvider { get; }
+    }
+
+    public class ClassWithDefaultStringArgument
+    {
+        public ClassWithDefaultStringArgument(string value = "42")
+        {
+            Value = value;
+        }
+
+        public string Value { get; }
     }
 }
