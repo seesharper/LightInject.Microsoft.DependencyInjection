@@ -115,56 +115,28 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
         }
 
         [Fact]
-        public void Test()
+        public void ShouldHandleCorrectScopeWhenInjectedAlongWithHttpClient()
         {
             var collection = new ServiceCollection();
-            collection.AddTransient<IFoo, FooWithTransientAndScopedDependency>();
             collection.AddScoped<IScoped>(sp => new Scoped());
-            collection.AddTransient<ITransient>(sp => new Transient());
             collection.AddHttpClient<MyClient>();
             var provider = collection.CreateLightInjectServiceProvider();
-            //var provider = collection.BuildServiceProvider();
+            IScoped firstScoped;
+            IScoped secondScoped;
             using (var scope1 = provider.CreateScope())
             {
                 var instance = scope1.ServiceProvider.GetService<MyClient>();
+                firstScoped = instance.Scoped;
             }
 
             using (var scope2 = provider.CreateScope())
             {
                 var instance = scope2.ServiceProvider.GetService<MyClient>();
+                secondScoped = instance.Scoped;
             }
+
+            Assert.NotSame(firstScoped, secondScoped);
         }
-
-
-
-        [Fact]
-        public void Test2()
-        {
-            var collection = new ServiceCollection();
-            collection.AddTransient<IFoo>(sp =>
-            {
-                using (var scope = sp.CreateScope())
-                {
-                    return new FooWithTransientAndScopedDependency(sp.GetService<ITransient>(), sp.GetService<IScoped>());
-                }
-
-            });
-            collection.AddScoped<IScoped>(sp => new Scoped());
-            collection.AddTransient<ITransient, Transient>();
-
-            var provider = collection.CreateLightInjectServiceProvider();
-            using (var scope = provider.CreateScope())
-            {
-                var instance = scope.ServiceProvider.GetService<IFoo>();
-            }
-
-            using (var scope = provider.CreateScope())
-            {
-                var instance = scope.ServiceProvider.GetService<IFoo>();
-            }
-        }
-
-
 
 
 
@@ -172,8 +144,10 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
         {
             public MyClient(HttpClient httpClient, IScoped scoped)
             {
-
+                Scoped = scoped;
             }
+
+            public IScoped Scoped { get; }
         }
 
 
@@ -210,27 +184,7 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             public string Value { get; }
         }
 
-        public class FooWithTransientAndScopedDependency : IFoo
-        {
-            public FooWithTransientAndScopedDependency(ITransient transient, IScoped scoped)
-            {
-            }
-        }
 
-        public interface ITransient
-        {
-
-        }
-
-        public class Transient : ITransient
-        {
-            public static int InstanceCount;
-
-            public Transient()
-            {
-                InstanceCount++;
-            }
-        }
 
         public interface IScoped
         {
