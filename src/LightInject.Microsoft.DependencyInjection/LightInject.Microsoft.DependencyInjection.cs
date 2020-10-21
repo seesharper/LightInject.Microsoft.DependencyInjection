@@ -1,7 +1,7 @@
 ﻿/*********************************************************************************
     The MIT License (MIT)
 
-    Copyright (c) 2019 bernhard.richter@gmail.com
+    Copyright (c) 2020 bernhard.richter@gmail.com
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 3.3.2
+    LightInject.Microsoft.DependencyInjection version 3.3.6
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -427,8 +427,10 @@ namespace LightInject.Microsoft.DependencyInjection
             => new PerRootScopeLifetime(rootScope);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#pragma warning disable IDE0060
         public object GetInstance(GetInstanceDelegate createInstance, Scope scope, object[] arguments)
         {
+#pragma warning restore IDE0060
             if (instance != null)
             {
                 return instance;
@@ -438,7 +440,7 @@ namespace LightInject.Microsoft.DependencyInjection
             {
                 if (instance == null)
                 {
-                    instance = createInstance(arguments, scope);
+                    instance = createInstance(arguments, rootScope);
                     RegisterForDisposal(instance);
                 }
             }
