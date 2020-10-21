@@ -10,7 +10,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       // If you have changed target frameworks, make sure to update the program path.
-      "program": "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Benchmarks/bin/Debug/netcoreapp2.2/LightInject.Microsoft.DependencyInjection.Benchmarks.dll",
+      "program": "${workspaceFolder}/src/LightInject.Microsoft.DependencyInjection.Benchmarks/bin/Debug/netcoreapp2.2/LightInject.Microsoft.DependencyInjection.Benchmarks.dll",
       "args": [],
       "cwd": "${workspaceFolder}/LightInject.Microsoft.DependencyInjection.Benchmarks",
       // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
