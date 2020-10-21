@@ -138,7 +138,66 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.NotSame(firstScoped, secondScoped);
         }
 
+        [Fact]
+        public void ShouldNotDisposeScopedServiceWhenInjectedIntoSingletonUsingDefaultProvider()
+        {
+            var collection = new ServiceCollection();
+            collection.AddSingleton<SingletonWithScopedDisposable>();
+            collection.AddScoped<ScopedDisposable>();
 
+            var provider = collection.BuildServiceProvider();
+
+            SingletonWithScopedDisposable singletonDisposable;
+            using (var scope = provider.CreateScope())
+            {
+                singletonDisposable = scope.ServiceProvider.GetService<SingletonWithScopedDisposable>();
+            }
+
+            Assert.False(singletonDisposable.Disposable.IsDisposed);
+        }
+
+        [Fact]
+        public void ShouldNotDisposeScopedServiceWhenInjectedIntoSingletonUsingLightInjectProvider()
+        {
+            var collection = new ServiceCollection();
+            collection.AddSingleton<SingletonWithScopedDisposable>();
+            collection.AddScoped<ScopedDisposable>();
+
+            var provider = collection.CreateLightInjectServiceProvider();
+
+            SingletonWithScopedDisposable singletonDisposable;
+            using (var scope = provider.CreateScope())
+            {
+                singletonDisposable = scope.ServiceProvider.GetService<SingletonWithScopedDisposable>();
+            }
+
+            Assert.False(singletonDisposable.Disposable.IsDisposed);
+        }
+
+        public class SingletonWithScopedDisposable
+        {
+            public SingletonWithScopedDisposable(ScopedDisposable disposable)
+            {
+                Disposable = disposable;
+            }
+
+            public ScopedDisposable Disposable { get; }
+
+        }
+
+        public class ScopedDisposable : IDisposable
+        {
+            public bool IsDisposed;
+
+            public ScopedDisposable()
+            {
+            }
+
+            public void Dispose()
+            {
+                IsDisposed = true;
+            }
+        }
 
         public class MyClient
         {
