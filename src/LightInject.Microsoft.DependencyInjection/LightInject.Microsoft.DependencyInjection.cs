@@ -318,7 +318,7 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
-    internal class LightInjectServiceProvider : IServiceProvider, IDisposable
+    internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable
     {
         private readonly IServiceFactory serviceFactory;
 
@@ -345,6 +345,15 @@ namespace LightInject.Microsoft.DependencyInjection
                 scope.Dispose();
             }
         }
+
+        /// <summary>
+        /// Gets an instance of the given <paramref name="serviceType"/>.
+        /// </summary>
+        /// <param name="serviceType">The service type to return.</param>
+        /// <returns>An instance of the given <paramref name="serviceType"/>.
+        /// Throws an exception if it cannot be created.</returns>
+        public object GetRequiredService(Type serviceType)
+            => serviceFactory.GetInstance(serviceType);
 
         /// <summary>
         /// Gets an instance of the given <paramref name="serviceType"/>.
