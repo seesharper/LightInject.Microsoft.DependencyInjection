@@ -110,8 +110,19 @@ namespace LightInject.Microsoft.DependencyInjection
             rootScope.Completed += (a, s) => container.Dispose();
             container.Register<IServiceProvider>(f => new LightInjectServiceProvider(f));
             container.RegisterSingleton<IServiceScopeFactory>(f => new LightInjectServiceScopeFactory(container));
+            container.RegisterSingleton<IServiceProviderIsService>(factory => new LightInjectIsServiceProviderIsService(serviceType => CanGetInstance(container, serviceType)));
             RegisterServices(container, rootScope, serviceCollection);
             return new LightInjectServiceScope(rootScope).ServiceProvider;
+        }
+
+        private static bool CanGetInstance(IServiceContainer container, Type serviceType)
+        {
+            if (serviceType.IsGenericTypeDefinition)
+            {
+                return false;
+            }
+
+            return container.CanGetInstance(serviceType, string.Empty);
         }
 
         private static void RegisterServices(IServiceContainer container, Scope rootScope, IServiceCollection serviceCollection)
@@ -400,7 +411,6 @@ namespace LightInject.Microsoft.DependencyInjection
             ServiceProvider = new LightInjectServiceProvider(scope);
         }
 
-        /// <inheritdoc/>
         public IServiceProvider ServiceProvider { get; }
 
         /// <summary>
@@ -463,6 +473,21 @@ namespace LightInject.Microsoft.DependencyInjection
             {
                 rootScope.TrackInstance(disposable);
             }
+        }
+    }
+
+    internal class LightInjectIsServiceProviderIsService : IServiceProviderIsService
+    {
+        private readonly Func<Type, bool> canGetService;
+
+        public LightInjectIsServiceProviderIsService(Func<Type, bool> canGetService)
+        {
+            this.canGetService = canGetService;
+        }
+
+        public bool IsService(Type serviceType)
+        {
+            return canGetService(serviceType);
         }
     }
 }
