@@ -1,7 +1,7 @@
 ﻿/*********************************************************************************
     The MIT License (MIT)
 
-    Copyright (c) 2020 bernhard.richter@gmail.com
+    Copyright (c) 2021 bernhard.richter@gmail.com
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 ******************************************************************************
-    LightInject.Microsoft.DependencyInjection version 3.3.6
+    LightInject.Microsoft.DependencyInjection version 3.4.0-preview1
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
@@ -110,6 +110,7 @@ namespace LightInject.Microsoft.DependencyInjection
             rootScope.Completed += (a, s) => container.Dispose();
             container.Register<IServiceProvider>(f => new LightInjectServiceProvider(f));
             container.RegisterSingleton<IServiceScopeFactory>(f => new LightInjectServiceScopeFactory(container));
+            container.RegisterSingleton<IServiceProviderIsService>(factory => new LightInjectIsServiceProviderIsService(serviceType => container.CanGetInstance(serviceType, string.Empty)));
             RegisterServices(container, rootScope, serviceCollection);
             return new LightInjectServiceScope(rootScope).ServiceProvider;
         }
@@ -400,7 +401,6 @@ namespace LightInject.Microsoft.DependencyInjection
             ServiceProvider = new LightInjectServiceProvider(scope);
         }
 
-        /// <inheritdoc/>
         public IServiceProvider ServiceProvider { get; }
 
         /// <summary>
@@ -463,6 +463,24 @@ namespace LightInject.Microsoft.DependencyInjection
             {
                 rootScope.TrackInstance(disposable);
             }
+        }
+    }
+
+    internal class LightInjectIsServiceProviderIsService : IServiceProviderIsService
+    {
+        private readonly Func<Type, bool> canGetService;
+
+        public LightInjectIsServiceProviderIsService(Func<Type, bool> canGetService)
+            => this.canGetService = canGetService;
+
+        public bool IsService(Type serviceType)
+        {
+            if (serviceType.IsGenericTypeDefinition)
+            {
+                return false;
+            }
+
+            return canGetService(serviceType);
         }
     }
 }
