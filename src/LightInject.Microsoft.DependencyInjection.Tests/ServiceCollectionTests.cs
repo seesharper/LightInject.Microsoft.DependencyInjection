@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -28,6 +29,14 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.IsAssignableFrom<IServiceProvider>(provider);
 
             Assert.NotEmpty(log.ToString());
+        }
+
+        [Fact]
+        public void ShouldSupportNonRuntimeTypeFactoryRegistrations()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton(new TypeDelegator(typeof(int)), _ => 42);
+            Assert.NotNull(serviceCollection.CreateLightInjectServiceProvider());
         }
     }
 }
