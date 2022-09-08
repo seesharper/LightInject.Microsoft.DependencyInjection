@@ -212,7 +212,7 @@ namespace LightInject.Microsoft.DependencyInjection
         private static Delegate CreateFactoryDelegate(ServiceDescriptor serviceDescriptor)
         {
             var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedFactoryDelegate");
-            var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType);
+            var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType.UnderlyingSystemType);
             return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
         }
 
