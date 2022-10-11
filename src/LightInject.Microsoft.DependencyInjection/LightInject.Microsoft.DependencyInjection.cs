@@ -43,6 +43,7 @@ namespace LightInject.Microsoft.DependencyInjection
     using System.Linq;
     using System.Reflection;
     using System.Runtime.CompilerServices;
+    using System.Threading.Tasks;
     using global::Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
@@ -387,7 +388,7 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="IServiceScope"/> implementation that wraps a <see cref="Scope"/>.
     /// </summary>
-    internal class LightInjectServiceScope : IServiceScope
+    internal class LightInjectServiceScope : IServiceScope, IAsyncDisposable
     {
         private readonly Scope wrappedScope;
 
@@ -403,10 +404,11 @@ namespace LightInject.Microsoft.DependencyInjection
 
         public IServiceProvider ServiceProvider { get; }
 
-        /// <summary>
-        /// Disposes the wrapped <see cref="Scope"/>.
-        /// </summary>
+        /// <inheritdoc/>
         public void Dispose() => wrappedScope.Dispose();
+
+        /// <inheritdoc/>
+        public ValueTask DisposeAsync() => wrappedScope.DisposeAsync();
     }
 
     /// <summary>
