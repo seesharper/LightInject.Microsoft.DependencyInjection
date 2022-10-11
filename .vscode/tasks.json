@@ -28,7 +28,7 @@
       ],
       "type": "shell",
       "options": {
-        "cwd": "src"
+        "cwd": "${workspaceFolder}"
       },
       "group": "build",
       "presentation": {

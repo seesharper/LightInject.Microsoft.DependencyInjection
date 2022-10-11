@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net5.0;net6.0</TargetFrameworks>
     <Authors>Bernhard Richter</Authors>
     <Description>Enables LightInject to be used as the service container in ASP.NET Core and Entity Framework 7 applications.</Description>
     <Copyright>Bernhard Richter</Copyright>
@@ -26,4 +26,11 @@
     </PackageReference>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
   </ItemGroup>
+  <Choose>
+    <When Condition=" '$(TargetFramework)'=='netstandard2.0'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
+      </ItemGroup>
+    </When>
+  </Choose>
 </Project>
