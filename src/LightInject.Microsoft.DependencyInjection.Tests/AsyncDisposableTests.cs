@@ -26,7 +26,6 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.Contains(asyncDisposable, disposedObjects);
         }
 
-
         [Fact]
         public async Task ShouldDisposeAsyncDisposableFromRootScope()
         {
