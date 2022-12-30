@@ -25,7 +25,9 @@
     http://www.lightinject.net/
     http://twitter.com/bernhardrichter
 ******************************************************************************/
-
+#if NET6_0_OR_GREATER
+#define USE_ASYNCDISPOSABLE
+#endif
 [module: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1126:PrefixCallsCorrectly", Justification = "Reviewed")]
 [module: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1101:PrefixLocalCallsWithThis", Justification = "No inheritance")]
 [module: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1402:FileMayOnlyContainASingleClass", Justification = "Single source file deployment.")]
@@ -320,7 +322,11 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
     /// </summary>
+#if USE_ASYNCDISPOSABLE
+    internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable, IAsyncDisposable
+#else
     internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable
+#endif
     {
         private readonly IServiceFactory serviceFactory;
 
@@ -347,6 +353,25 @@ namespace LightInject.Microsoft.DependencyInjection
                 scope.Dispose();
             }
         }
+#if USE_ASYNCDISPOSABLE
+
+        public ValueTask DisposeAsync()
+        {
+            if (isDisposed)
+            {
+                return ValueTask.CompletedTask;
+            }
+
+            isDisposed = true;
+
+            if (serviceFactory is Scope scope)
+            {
+                return scope.DisposeAsync();
+            }
+
+            return ValueTask.CompletedTask;
+        }
+#endif
 
         /// <summary>
         /// Gets an instance of the given <paramref name="serviceType"/>.
@@ -388,7 +413,11 @@ namespace LightInject.Microsoft.DependencyInjection
     /// <summary>
     /// An <see cref="IServiceScope"/> implementation that wraps a <see cref="Scope"/>.
     /// </summary>
+#if USE_ASYNCDISPOSABLE
     internal class LightInjectServiceScope : IServiceScope, IAsyncDisposable
+#else
+    internal class LightInjectServiceScope : IServiceScope
+#endif
     {
         private readonly Scope wrappedScope;
 
@@ -407,8 +436,10 @@ namespace LightInject.Microsoft.DependencyInjection
         /// <inheritdoc/>
         public void Dispose() => wrappedScope.Dispose();
 
+#if USE_ASYNCDISPOSABLE
         /// <inheritdoc/>
         public ValueTask DisposeAsync() => wrappedScope.DisposeAsync();
+#endif
     }
 
     /// <summary>
@@ -464,6 +495,10 @@ namespace LightInject.Microsoft.DependencyInjection
             if (instance is IDisposable disposable)
             {
                 rootScope.TrackInstance(disposable);
+            }
+            else if (instance is IAsyncDisposable asyncDisposable)
+            {
+                rootScope.TrackInstance(asyncDisposable);
             }
         }
     }

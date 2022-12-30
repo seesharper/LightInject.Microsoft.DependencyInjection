@@ -25,6 +25,24 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
 
             Assert.Contains(asyncDisposable, disposedObjects);
         }
+
+
+        [Fact]
+        public async Task ShouldDisposeAsyncDisposableFromRootScope()
+        {
+            var serviceCollection = new ServiceCollection();
+            List<object> disposedObjects = new();
+            serviceCollection.AddSingleton<AsyncDisposable>(sp => new AsyncDisposable(disposedObject => disposedObjects.Add(disposedObject)));
+
+            var serviceProvider = serviceCollection.CreateLightInjectServiceProvider();
+
+            AsyncDisposable asyncDisposable = null;
+
+            asyncDisposable = serviceProvider.GetService<AsyncDisposable>();
+            await ((IAsyncDisposable)serviceProvider).DisposeAsync();
+
+            Assert.Contains(asyncDisposable, disposedObjects);
+        }
     }
 
     public class AsyncDisposable : IAsyncDisposable
