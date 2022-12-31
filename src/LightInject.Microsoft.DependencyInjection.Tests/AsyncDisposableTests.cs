@@ -40,7 +40,18 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             asyncDisposable = serviceProvider.GetService<AsyncDisposable>();
             await ((IAsyncDisposable)serviceProvider).DisposeAsync();
 
+            // Call it twice to ensure only disposed once. 
+            await ((IAsyncDisposable)serviceProvider).DisposeAsync();
+
+
             Assert.Contains(asyncDisposable, disposedObjects);
+            Assert.Single(disposedObjects);
+        }
+
+        [Fact]
+        public async Task ShouldHandleDisposeAsyncOnServiceProvider()
+        {
+
         }
     }
 
