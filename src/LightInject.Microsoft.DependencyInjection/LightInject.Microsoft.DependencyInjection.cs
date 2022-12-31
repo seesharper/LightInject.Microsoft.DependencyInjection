@@ -349,7 +349,16 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
 #if USE_ASYNCDISPOSABLE
 
     public ValueTask DisposeAsync()
-        => scope.DisposeAsync();
+    {
+        if (isDisposed)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        isDisposed = true;
+
+        return scope.DisposeAsync();
+    }
 #endif
 
     /// <summary>
