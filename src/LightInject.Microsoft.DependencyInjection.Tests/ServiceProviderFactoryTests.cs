@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -92,7 +93,7 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddTransient<string>(p => "42");
-            var factory = new LightInjectServiceProviderFactory();
+            var factory = new LightInjectServiceProviderFactory(options => options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last());
             var container = factory.CreateBuilder(serviceCollection);
 
             container.Register<string>(f => "84");
