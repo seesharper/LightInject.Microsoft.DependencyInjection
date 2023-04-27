@@ -119,10 +119,24 @@ public static class DependencyInjectionContainerExtensions
     {
         var registrations = serviceCollection.Select(d => CreateServiceRegistration(d, rootScope)).ToList();
 
+        var servicesThatRequireNamePrefix = container.AvailableServices
+            .GroupBy(si => si.ServiceType)
+            .Select(g => new { ServiceType = g.Key, Prefix = g.OrderBy(g => g.ServiceName).Last().ServiceName })
+            .ToDictionary(g => g.ServiceType, g => g.Prefix);
+
+
+
         for (int i = 0; i < registrations.Count; i++)
         {
             ServiceRegistration registration = registrations[i];
-            registration.ServiceName = i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
+            if (servicesThatRequireNamePrefix.TryGetValue(registration.ServiceType, out string prefix))
+            {
+                registration.ServiceName = prefix + i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
+            }
+            else
+            {
+                registration.ServiceName = i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
+            }
             container.Register(registration);
         }
     }
@@ -234,7 +248,8 @@ public static class ContainerOptionsExtensions
     /// <returns><see cref="ContainerOptions"/>.</returns>
     public static ContainerOptions WithMicrosoftSettings(this ContainerOptions options)
     {
-        options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
+        //options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
+        options.DefaultServiceSelector = serviceNames => serviceNames.Last();
         options.EnablePropertyInjection = false;
         options.EnableCurrentScope = false;
         options.EnableOptionalArguments = true;
