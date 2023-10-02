@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.8" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0-rc.1.23419.4" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LightInject.Microsoft.DependencyInjection\LightInject.Microsoft.DependencyInjection.csproj" />
