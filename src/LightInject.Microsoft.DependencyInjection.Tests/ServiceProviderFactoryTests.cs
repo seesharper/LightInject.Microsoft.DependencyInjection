@@ -87,22 +87,6 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.True(foo.IsDisposed);
         }
 
-
-        [Fact]
-        public void ShouldPickServiceWithoutServiceNameAsDefaultIfRegistered()
-        {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddTransient<string>(p => "42");
-            var factory = new LightInjectServiceProviderFactory(options => options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last());
-            var container = factory.CreateBuilder(serviceCollection);
-
-            container.Register<string>(f => "84");
-            var provider = container.CreateServiceProvider(serviceCollection);
-            var value = provider.GetService<string>();
-
-            Assert.Equal("84", value);
-        }
-
         [Fact]
         public void ShouldCallConfigureAction()
         {

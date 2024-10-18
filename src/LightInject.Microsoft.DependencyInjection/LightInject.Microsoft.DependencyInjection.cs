@@ -1,7 +1,7 @@
 ﻿/*********************************************************************************
     The MIT License (MIT)
 
-    Copyright (c) 2022 bernhard.richter@gmail.com
+    Copyright (c) 2024 bernhard.richter@gmail.com
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -110,7 +110,8 @@ public static class DependencyInjectionContainerExtensions
         rootScope.Completed += (a, s) => container.Dispose();
         container.Register<IServiceProvider>(f => new LightInjectServiceProvider((Scope)f));
         container.RegisterSingleton<IServiceScopeFactory>(f => new LightInjectServiceScopeFactory(container));
-        container.RegisterSingleton<IServiceProviderIsService>(factory => new LightInjectIsServiceProviderIsService(serviceType => container.CanGetInstance(serviceType, string.Empty)));
+        container.RegisterSingleton<IServiceProviderIsService>(factory => new LightInjectIsServiceProviderIsService((serviceType, serviceName) => container.CanGetInstance(serviceType, serviceName)));
+        container.RegisterSingleton<IServiceProviderIsKeyedService>(factory => new LightInjectIsServiceProviderIsService((serviceType, serviceName) => container.CanGetInstance(serviceType, serviceName)));
         RegisterServices(container, rootScope, serviceCollection);
         return new LightInjectServiceScope(rootScope).ServiceProvider;
     }
@@ -119,54 +120,72 @@ public static class DependencyInjectionContainerExtensions
     {
         var registrations = serviceCollection.Select(d => CreateServiceRegistration(d, rootScope)).ToList();
 
-        var servicesThatRequireNamePrefix = container.AvailableServices
-            .GroupBy(si => si.ServiceType)
-            .Select(g => new { ServiceType = g.Key, Prefix = g.OrderBy(g => g.ServiceName).Last().ServiceName })
-            .ToDictionary(g => g.ServiceType, g => g.Prefix);
-
-
-
-        for (int i = 0; i < registrations.Count; i++)
+        foreach (var registration in registrations)
         {
-            ServiceRegistration registration = registrations[i];
-            if (servicesThatRequireNamePrefix.TryGetValue(registration.ServiceType, out string prefix))
-            {
-                registration.ServiceName = prefix + i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
-            }
-            else
-            {
-                registration.ServiceName = i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
-            }
             container.Register(registration);
         }
     }
 
     private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
-        if (serviceDescriptor.ImplementationFactory != null)
+        if (serviceDescriptor.IsKeyedService)
         {
-            return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
-        }
+            if (serviceDescriptor.KeyedImplementationFactory != null)
+            {
+                return CreateServiceRegistrationForKeyedFactoryDelegate(serviceDescriptor, rootScope);
+            }
 
-        if (serviceDescriptor.ImplementationInstance != null)
+            if (serviceDescriptor.KeyedImplementationInstance != null)
+            {
+                return CreateServiceRegistrationForKeyedImplementationInstance(serviceDescriptor, rootScope);
+            }
+
+            return CreateServiceRegistrationForKeyedImplementationType(serviceDescriptor, rootScope);
+        }
+        else
         {
-            return CreateServiceRegistrationForInstance(serviceDescriptor, rootScope);
-        }
 
-        return CreateServiceRegistrationServiceType(serviceDescriptor, rootScope);
+            if (serviceDescriptor.ImplementationFactory != null)
+            {
+                return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
+            }
+
+            if (serviceDescriptor.ImplementationInstance != null)
+            {
+                return CreateServiceRegistrationForImplementationInstance(serviceDescriptor, rootScope);
+            }
+
+            return CreateServiceRegistrationForImplementationType(serviceDescriptor, rootScope);
+        }
     }
 
-    private static ServiceRegistration CreateServiceRegistrationServiceType(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    private static ServiceRegistration CreateServiceRegistrationForImplementationType(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
         ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
         registration.ImplementingType = serviceDescriptor.ImplementationType;
         return registration;
     }
 
-    private static ServiceRegistration CreateServiceRegistrationForInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    private static ServiceRegistration CreateServiceRegistrationForKeyedImplementationType(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    {
+        ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
+        registration.ImplementingType = serviceDescriptor.KeyedImplementationType;
+        registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
+        return registration;
+    }
+
+    private static ServiceRegistration CreateServiceRegistrationForImplementationInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
         ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
         registration.Value = serviceDescriptor.ImplementationInstance;
+        return registration;
+    }
+
+    private static ServiceRegistration CreateServiceRegistrationForKeyedImplementationInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    {
+        ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
+        registration.Value = serviceDescriptor.KeyedImplementationInstance;
+        registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
         return registration;
     }
 
@@ -177,14 +196,26 @@ public static class DependencyInjectionContainerExtensions
         return registration;
     }
 
+    private static ServiceRegistration CreateServiceRegistrationForKeyedFactoryDelegate(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    {
+        ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
+        registration.FactoryExpression = CreateKeyedFactoryDelegate(serviceDescriptor);
+        registration.FactoryType = FactoryType.ServiceWithServiceKey;
+        return registration;
+    }
+
     private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
         ServiceRegistration registration = new ServiceRegistration
         {
             Lifetime = ResolveLifetime(serviceDescriptor, rootScope),
             ServiceType = serviceDescriptor.ServiceType,
-            ServiceName = Guid.NewGuid().ToString(),
         };
+        if (serviceDescriptor.IsKeyedService)
+        {
+            registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
+        }
+
         return registration;
     }
 
@@ -214,13 +245,18 @@ public static class DependencyInjectionContainerExtensions
         {
             return true;
         }
-
-        if (serviceDescriptor.ImplementationType != null && !typeof(IDisposable).IsAssignableFrom(serviceDescriptor.ImplementationType))
+        if (serviceDescriptor.IsKeyedService)
         {
-            return false;
+            if (serviceDescriptor.KeyedImplementationType != null && typeof(IDisposable).IsAssignableFrom(serviceDescriptor.KeyedImplementationType))
+            {
+                return true;
+            }
         }
-
-        return true;
+        else if (serviceDescriptor.ImplementationType != null && typeof(IDisposable).IsAssignableFrom(serviceDescriptor.ImplementationType))
+        {
+            return true;
+        }
+        return false;
     }
 
     private static Delegate CreateFactoryDelegate(ServiceDescriptor serviceDescriptor)
@@ -233,6 +269,19 @@ public static class DependencyInjectionContainerExtensions
 #pragma warning disable IDE0051
     private static Func<IServiceFactory, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
         => serviceFactory => (T)serviceDescriptor.ImplementationFactory(new LightInjectServiceProvider((Scope)serviceFactory));
+#pragma warning restore IDE0051
+
+    private static Delegate CreateKeyedFactoryDelegate(ServiceDescriptor serviceDescriptor)
+    {
+        var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedKeyedFactoryDelegate");
+        var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType.UnderlyingSystemType);
+        return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
+    }
+#pragma warning disable IDE0051
+    private static Func<IServiceFactory, string, T> CreateTypedKeyedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
+    {
+        return (serviceFactory, serviceName) => (T)serviceDescriptor.KeyedImplementationFactory(new LightInjectServiceProvider((Scope)serviceFactory), serviceName);
+    }
 #pragma warning restore IDE0051
 }
 
@@ -248,11 +297,10 @@ public static class ContainerOptionsExtensions
     /// <returns><see cref="ContainerOptions"/>.</returns>
     public static ContainerOptions WithMicrosoftSettings(this ContainerOptions options)
     {
-        //options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
-        options.DefaultServiceSelector = serviceNames => serviceNames.Last();
         options.EnablePropertyInjection = false;
         options.EnableCurrentScope = false;
         options.EnableOptionalArguments = true;
+        options.AllowMultipleRegistrations = true;
         return options;
     }
 
@@ -270,6 +318,7 @@ public static class ContainerOptionsExtensions
         LogFactory = containerOptions.LogFactory,
         VarianceFilter = containerOptions.VarianceFilter,
         EnableOptionalArguments = containerOptions.EnableOptionalArguments,
+        AllowMultipleRegistrations = containerOptions.AllowMultipleRegistrations,
     };
 }
 
@@ -335,7 +384,7 @@ public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServic
 /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
 /// </summary>
 #if USE_ASYNCDISPOSABLE
-internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable, IAsyncDisposable
+internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IKeyedServiceProvider, IDisposable, IAsyncDisposable
 #else
 internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable
 #endif
@@ -373,6 +422,16 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
         isDisposed = true;
 
         return scope.DisposeAsync();
+    }
+
+    public object GetKeyedService(Type serviceType, object serviceKey)
+    {
+        return scope.TryGetInstance(serviceType, serviceKey?.ToString());
+    }
+
+    public object GetRequiredKeyedService(Type serviceType, object serviceKey)
+    {
+        return scope.GetInstance(serviceType, serviceKey?.ToString());
     }
 #endif
 
@@ -506,12 +565,21 @@ internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
     }
 }
 
-internal class LightInjectIsServiceProviderIsService : IServiceProviderIsService
+internal class LightInjectIsServiceProviderIsService : IServiceProviderIsKeyedService
 {
-    private readonly Func<Type, bool> canGetService;
+    private readonly Func<Type, string, bool> canGetService;
 
-    public LightInjectIsServiceProviderIsService(Func<Type, bool> canGetService)
+    public LightInjectIsServiceProviderIsService(Func<Type, string, bool> canGetService)
         => this.canGetService = canGetService;
+
+    public bool IsKeyedService(Type serviceType, object serviceKey)
+    {
+        if (serviceType.IsGenericTypeDefinition)
+        {
+            return false;
+        }
+        return canGetService(serviceType, serviceKey?.ToString() ?? string.Empty);
+    }
 
     public bool IsService(Type serviceType)
     {
@@ -520,6 +588,6 @@ internal class LightInjectIsServiceProviderIsService : IServiceProviderIsService
             return false;
         }
 
-        return canGetService(serviceType);
+        return canGetService(serviceType, string.Empty);
     }
 }
