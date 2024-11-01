@@ -39,6 +39,7 @@
 namespace LightInject.Microsoft.DependencyInjection;
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
@@ -280,7 +281,41 @@ public static class DependencyInjectionContainerExtensions
 #pragma warning disable IDE0051
     private static Func<IServiceFactory, string, T> CreateTypedKeyedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
     {
-        return (serviceFactory, serviceName) => (T)serviceDescriptor.KeyedImplementationFactory(new LightInjectServiceProvider((Scope)serviceFactory), serviceName);
+        return (serviceFactory, serviceName) =>
+        {
+            LightInjectServiceProvider.KeyedServiceTypeCache.TryGetValue(serviceDescriptor.ServiceType, out var serviceKeyType);
+            object key;
+            if (serviceName == null)
+            {
+                key = string.Empty;
+            }
+
+            else if (serviceKeyType.IsEnum)
+            {
+                key = Enum.Parse(serviceKeyType, serviceName);
+            }
+            else if (serviceKeyType == typeof(int))
+            {
+                key = int.Parse(serviceName, CultureInfo.InvariantCulture);
+            }
+            else if (serviceKeyType == typeof(string))
+            {
+                key = serviceName;
+            }
+            else
+            {
+                try
+                {
+                    key = Convert.ChangeType(serviceName, serviceKeyType, CultureInfo.InvariantCulture);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Unable to convert service key '{serviceName}' to type '{serviceKeyType}'.", ex);
+                }
+            }
+
+            return (T)serviceDescriptor.KeyedImplementationFactory(new LightInjectServiceProvider((Scope)serviceFactory), key);
+        };
     }
 #pragma warning restore IDE0051
 }
@@ -300,7 +335,7 @@ public static class ContainerOptionsExtensions
         options.EnablePropertyInjection = false;
         options.EnableCurrentScope = false;
         options.EnableOptionalArguments = true;
-        options.AllowMultipleRegistrations = true;
+        options.EnableMicrosoftCompatibility = true;
         return options;
     }
 
@@ -318,7 +353,7 @@ public static class ContainerOptionsExtensions
         LogFactory = containerOptions.LogFactory,
         VarianceFilter = containerOptions.VarianceFilter,
         EnableOptionalArguments = containerOptions.EnableOptionalArguments,
-        AllowMultipleRegistrations = containerOptions.AllowMultipleRegistrations,
+        EnableMicrosoftCompatibility = containerOptions.EnableMicrosoftCompatibility,
     };
 }
 
@@ -393,6 +428,8 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
 
     private bool isDisposed = false;
 
+    public static ConcurrentDictionary<Type, Type> KeyedServiceTypeCache { get; } = new ConcurrentDictionary<Type, Type>();
+
     /// <summary>
     /// Initializes a new instance of the <see cref="LightInjectServiceProvider"/> class.
     /// </summary>
@@ -426,11 +463,20 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
 
     public object GetKeyedService(Type serviceType, object serviceKey)
     {
+        if (serviceKey != null)
+        {
+            KeyedServiceTypeCache.TryAdd(serviceType, serviceKey.GetType());
+        }
+
         return scope.TryGetInstance(serviceType, serviceKey?.ToString());
     }
 
     public object GetRequiredKeyedService(Type serviceType, object serviceKey)
     {
+        if (serviceKey != null)
+        {
+            KeyedServiceTypeCache.TryAdd(serviceType, serviceKey.GetType());
+        }
         return scope.GetInstance(serviceType, serviceKey?.ToString());
     }
 #endif
