@@ -1,7 +1,9 @@
 using System;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Specification;
 using Xunit;
+using Xunit.Sdk;
 
 namespace LightInject.Microsoft.DependencyInjection.Tests;
 
@@ -12,7 +14,6 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         return serviceCollection.CreateLightInjectServiceProvider(new ContainerOptions() { EnableCurrentScope = false });
     }
 
-
     [Fact]
     public void ShouldHandleKeyedServiceWithEnumKey()
     {
@@ -21,7 +22,6 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         var provider = CreateServiceProvider(serviceCollection);
         provider.GetKeyedService<IKeyedService>(Key.A);
     }
-
 
     [Fact]
     public void ShouldHandleKeyedServiceWithStringServiceKey()
@@ -33,7 +33,7 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         Assert.Equal("A", ((KeyedServiceWithStringServiceKey)instance).ServiceKey);
     }
 
-     [Fact]
+    [Fact]
     public void ShouldHandleRequiredKeyedServiceWithStringServiceKeyUsingFactory()
     {
         var serviceCollection = new ServiceCollection();
@@ -83,7 +83,33 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         Assert.Equal(Key.A, ((KeyedServiceWithEnumServiceKey)instance).ServiceKey);
     }
 
-   
+    [Fact]
+    public void ShouldThrowExceptionWhenUsingInvalidKeyType()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedService>(new StringBuilder(), (sp, key) => new KeyedServiceWithEnumServiceKey((Key)key));
+        var provider = CreateServiceProvider(serviceCollection);
+        Assert.Throws<InvalidOperationException>(() => provider.GetKeyedService<IKeyedService>(new StringBuilder()));
+    }
+
+    [Fact]
+    public void ShouldHandleConvertibleType()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedService>(1L, (sp, key) => new KeyedServiceWithLongServiceKey((long)key));
+        var provider = CreateServiceProvider(serviceCollection);
+        var instance = provider.GetKeyedService<IKeyedService>(1L);
+        Assert.Equal(1L, ((KeyedServiceWithLongServiceKey)instance).ServiceKey);
+    }
+
+    [Fact]
+    public void ShouldHandlePassingNullAsServiceKeyForRequiredService()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedService, KeyedService>(Key.A);
+        var provider = CreateServiceProvider(serviceCollection);
+        Assert.Throws<InvalidOperationException>(() => provider.GetRequiredKeyedService<IKeyedService>(null));
+    }
 }
 
 public interface IKeyedService
@@ -95,37 +121,27 @@ public class KeyedService : IKeyedService
 
 }
 
-public class KeyedServiceWithStringServiceKey : IKeyedService
+public class KeyedServiceWithStringServiceKey([ServiceKey] string serviceKey) : IKeyedService
 {
-    public KeyedServiceWithStringServiceKey([ServiceKey] string serviceKey)
-    {
-        ServiceKey = serviceKey;
-    }
-
-    public string ServiceKey { get; }
+    public string ServiceKey { get; } = serviceKey;
 }
 
-public class KeyedServiceWithEnumServiceKey : IKeyedService
+public class KeyedServiceWithEnumServiceKey([ServiceKey] Key serviceKey) : IKeyedService
 {
-    public KeyedServiceWithEnumServiceKey([ServiceKey] Key serviceKey)
-    {
-        ServiceKey = serviceKey;
-    }
-
-    public Key ServiceKey { get; }
+    public Key ServiceKey { get; } = serviceKey;
 }
 
 
-public class KeyServiceWithIntKey : IKeyedService
+public class KeyServiceWithIntKey([ServiceKey] int serviceKey) : IKeyedService
 {
-    public KeyServiceWithIntKey([ServiceKey] int serviceKey)
-    {
-        ServiceKey = serviceKey;
-    }
-
-    public int ServiceKey { get; }
+    public int ServiceKey { get; } = serviceKey;
 }
 
+
+public class KeyedServiceWithLongServiceKey([ServiceKey] long serviceKey) : IKeyedService
+{
+    public long ServiceKey { get; } = serviceKey;
+}
 
 public enum Key
 {

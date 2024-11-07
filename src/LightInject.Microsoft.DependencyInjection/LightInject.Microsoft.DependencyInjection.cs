@@ -145,7 +145,6 @@ public static class DependencyInjectionContainerExtensions
         }
         else
         {
-
             if (serviceDescriptor.ImplementationFactory != null)
             {
                 return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
@@ -207,7 +206,7 @@ public static class DependencyInjectionContainerExtensions
 
     private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
-        ServiceRegistration registration = new ServiceRegistration
+        ServiceRegistration registration = new ()
         {
             Lifetime = ResolveLifetime(serviceDescriptor, rootScope),
             ServiceType = serviceDescriptor.ServiceType,
@@ -246,6 +245,7 @@ public static class DependencyInjectionContainerExtensions
         {
             return true;
         }
+
         if (serviceDescriptor.IsKeyedService)
         {
             if (serviceDescriptor.KeyedImplementationType != null && typeof(IDisposable).IsAssignableFrom(serviceDescriptor.KeyedImplementationType))
@@ -257,6 +257,7 @@ public static class DependencyInjectionContainerExtensions
         {
             return true;
         }
+
         return false;
     }
 
@@ -264,7 +265,7 @@ public static class DependencyInjectionContainerExtensions
     {
         var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedFactoryDelegate");
         var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType.UnderlyingSystemType);
-        return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
+        return (Delegate)closedGenericMethod.Invoke(null, [serviceDescriptor]);
     }
 
 #pragma warning disable IDE0051
@@ -276,8 +277,9 @@ public static class DependencyInjectionContainerExtensions
     {
         var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedKeyedFactoryDelegate");
         var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType.UnderlyingSystemType);
-        return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
+        return (Delegate)closedGenericMethod.Invoke(null, [serviceDescriptor]);
     }
+
 #pragma warning disable IDE0051
     private static Func<IServiceFactory, string, T> CreateTypedKeyedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
     {
@@ -285,12 +287,7 @@ public static class DependencyInjectionContainerExtensions
         {
             LightInjectServiceProvider.KeyedServiceTypeCache.TryGetValue(serviceDescriptor.ServiceType, out var serviceKeyType);
             object key;
-            if (serviceName == null)
-            {
-                key = string.Empty;
-            }
-
-            else if (serviceKeyType.IsEnum)
+            if (serviceKeyType.IsEnum)
             {
                 key = Enum.Parse(serviceKeyType, serviceName);
             }
@@ -344,7 +341,7 @@ public static class ContainerOptionsExtensions
     /// </summary>
     /// <param name="containerOptions">The <see cref="ContainerOptions"/> for which to create a clone.</param>
     /// <returns>A clone of the given paramref name="containerOptions".</returns>
-    public static ContainerOptions Clone(this ContainerOptions containerOptions) => new ContainerOptions()
+    public static ContainerOptions Clone(this ContainerOptions containerOptions) => new ()
     {
         DefaultServiceSelector = containerOptions.DefaultServiceSelector,
         EnableCurrentScope = containerOptions.EnableCurrentScope,
@@ -418,24 +415,19 @@ public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServic
 /// <summary>
 /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
 /// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="LightInjectServiceProvider"/> class.
+/// </remarks>
+/// <param name="scope">The <see cref="Scope"/> from which this service provider requests services.</param>
 #if USE_ASYNCDISPOSABLE
-internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IKeyedServiceProvider, IDisposable, IAsyncDisposable
+internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupportRequiredService, IKeyedServiceProvider, IDisposable, IAsyncDisposable
 #else
-internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable
+internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupportRequiredService, IDisposable
 #endif
 {
-    private readonly Scope scope;
-
     private bool isDisposed = false;
 
     public static ConcurrentDictionary<Type, Type> KeyedServiceTypeCache { get; } = new ConcurrentDictionary<Type, Type>();
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LightInjectServiceProvider"/> class.
-    /// </summary>
-    /// <param name="scope">The <see cref="Scope"/> from which this service provider requests services.</param>
-    public LightInjectServiceProvider(Scope scope)
-        => this.scope = scope;
 
     public void Dispose()
     {
@@ -465,7 +457,7 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
     {
         if (serviceKey != null)
         {
-            KeyedServiceTypeCache.TryAdd(serviceType, serviceKey.GetType());
+            KeyedServiceTypeCache.AddOrUpdate(serviceType, serviceKey.GetType(), (t, _) => serviceKey.GetType());
         }
 
         return scope.TryGetInstance(serviceType, serviceKey?.ToString());
@@ -475,8 +467,9 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
     {
         if (serviceKey != null)
         {
-            KeyedServiceTypeCache.TryAdd(serviceType, serviceKey.GetType());
+            KeyedServiceTypeCache.AddOrUpdate(serviceType, serviceKey.GetType(), (t, _) => serviceKey.GetType());
         }
+
         return scope.GetInstance(serviceType, serviceKey?.ToString());
     }
 #endif
@@ -502,16 +495,12 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
 /// <summary>
 /// An <see cref="IServiceScopeFactory"/> that uses an <see cref="IServiceContainer"/> to create new scopes.
 /// </summary>
-internal class LightInjectServiceScopeFactory : IServiceScopeFactory
+/// <remarks>
+/// Initializes a new instance of the <see cref="LightInjectServiceScopeFactory"/> class.
+/// </remarks>
+/// <param name="container">The <see cref="IServiceContainer"/> used to create new scopes.</param>
+internal class LightInjectServiceScopeFactory(IServiceContainer container) : IServiceScopeFactory
 {
-    private readonly IServiceContainer container;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LightInjectServiceScopeFactory"/> class.
-    /// </summary>
-    /// <param name="container">The <see cref="IServiceContainer"/> used to create new scopes.</param>
-    public LightInjectServiceScopeFactory(IServiceContainer container)
-        => this.container = container;
 
     /// <inheritdoc/>
     public IServiceScope CreateScope()
@@ -521,51 +510,39 @@ internal class LightInjectServiceScopeFactory : IServiceScopeFactory
 /// <summary>
 /// An <see cref="IServiceScope"/> implementation that wraps a <see cref="Scope"/>.
 /// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="LightInjectServiceScope"/> class.
+/// </remarks>
+/// <param name="scope">The <see cref="Scope"/> wrapped by this class.</param>
 #if USE_ASYNCDISPOSABLE
-internal class LightInjectServiceScope : IServiceScope, IAsyncDisposable
+internal class LightInjectServiceScope(Scope scope) : IServiceScope, IAsyncDisposable
 #else
-internal class LightInjectServiceScope : IServiceScope
+internal class LightInjectServiceScope(Scope scope) : IServiceScope
 #endif
 {
-    private readonly Scope wrappedScope;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LightInjectServiceScope"/> class.
-    /// </summary>
-    /// <param name="scope">The <see cref="Scope"/> wrapped by this class.</param>
-    public LightInjectServiceScope(Scope scope)
-    {
-        wrappedScope = scope;
-        ServiceProvider = new LightInjectServiceProvider(scope);
-    }
-
-    public IServiceProvider ServiceProvider { get; }
+    public IServiceProvider ServiceProvider { get; } = new LightInjectServiceProvider(scope);
 
     /// <inheritdoc/>
-    public void Dispose() => wrappedScope.Dispose();
+    public void Dispose() => scope.Dispose();
 
 #if USE_ASYNCDISPOSABLE
     /// <inheritdoc/>
-    public ValueTask DisposeAsync() => wrappedScope.DisposeAsync();
+    public ValueTask DisposeAsync() => scope.DisposeAsync();
 #endif
 }
 
 /// <summary>
 /// An <see cref="ILifetime"/> implementation that makes it possible to mimic the notion of a root scope.
 /// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="PerRootScopeLifetime"/> class.
+/// </remarks>
+/// <param name="rootScope">The root <see cref="Scope"/>.</param>
 [LifeSpan(30)]
-internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
+internal class PerRootScopeLifetime(Scope rootScope) : ILifetime, ICloneableLifeTime
 {
-    private readonly object syncRoot = new object();
-    private readonly Scope rootScope;
+    private readonly object syncRoot = new();
     private object instance;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PerRootScopeLifetime"/> class.
-    /// </summary>
-    /// <param name="rootScope">The root <see cref="Scope"/>.</param>
-    public PerRootScopeLifetime(Scope rootScope)
-        => this.rootScope = rootScope;
 
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
@@ -611,19 +588,15 @@ internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
     }
 }
 
-internal class LightInjectIsServiceProviderIsService : IServiceProviderIsKeyedService
+internal class LightInjectIsServiceProviderIsService(Func<Type, string, bool> canGetService) : IServiceProviderIsKeyedService
 {
-    private readonly Func<Type, string, bool> canGetService;
-
-    public LightInjectIsServiceProviderIsService(Func<Type, string, bool> canGetService)
-        => this.canGetService = canGetService;
-
     public bool IsKeyedService(Type serviceType, object serviceKey)
     {
         if (serviceType.IsGenericTypeDefinition)
         {
             return false;
         }
+
         return canGetService(serviceType, serviceKey?.ToString() ?? string.Empty);
     }
 

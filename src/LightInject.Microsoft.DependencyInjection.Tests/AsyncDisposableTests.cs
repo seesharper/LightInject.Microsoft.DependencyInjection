@@ -47,12 +47,6 @@ namespace LightInject.Microsoft.DependencyInjection.Tests
             Assert.Contains(asyncDisposable, disposedObjects);
             Assert.Single(disposedObjects);
         }
-
-        [Fact]
-        public async Task ShouldHandleDisposeAsyncOnServiceProvider()
-        {
-
-        }
     }
 
     public class AsyncDisposable : IAsyncDisposable

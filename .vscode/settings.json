@@ -1,3 +1,6 @@
 {
-  "coverage-gutters.lcovname": "../build/Artifacts/TestCoverage/coverage.info"
+  "coverage-gutters.lcovname": "../build/Artifacts/TestCoverage/coverage.info",
+  "cSpell.words": [
+    "Xunit"
+  ]
 }
