@@ -1,7 +1,7 @@
 ﻿/*********************************************************************************
     The MIT License (MIT)
 
-    Copyright (c) 2022 bernhard.richter@gmail.com
+    Copyright (c) 2024 bernhard.richter@gmail.com
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 namespace LightInject.Microsoft.DependencyInjection;
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
@@ -110,7 +111,8 @@ public static class DependencyInjectionContainerExtensions
         rootScope.Completed += (a, s) => container.Dispose();
         container.Register<IServiceProvider>(f => new LightInjectServiceProvider((Scope)f));
         container.RegisterSingleton<IServiceScopeFactory>(f => new LightInjectServiceScopeFactory(container));
-        container.RegisterSingleton<IServiceProviderIsService>(factory => new LightInjectIsServiceProviderIsService(serviceType => container.CanGetInstance(serviceType, string.Empty)));
+        container.RegisterSingleton<IServiceProviderIsService>(factory => new LightInjectIsServiceProviderIsService((serviceType, serviceName) => container.CanGetInstance(serviceType, serviceName)));
+        container.RegisterSingleton<IServiceProviderIsKeyedService>(factory => new LightInjectIsServiceProviderIsService((serviceType, serviceName) => container.CanGetInstance(serviceType, serviceName)));
         RegisterServices(container, rootScope, serviceCollection);
         return new LightInjectServiceScope(rootScope).ServiceProvider;
     }
@@ -119,54 +121,71 @@ public static class DependencyInjectionContainerExtensions
     {
         var registrations = serviceCollection.Select(d => CreateServiceRegistration(d, rootScope)).ToList();
 
-        var servicesThatRequireNamePrefix = container.AvailableServices
-            .GroupBy(si => si.ServiceType)
-            .Select(g => new { ServiceType = g.Key, Prefix = g.OrderBy(g => g.ServiceName).Last().ServiceName })
-            .ToDictionary(g => g.ServiceType, g => g.Prefix);
-
-
-
-        for (int i = 0; i < registrations.Count; i++)
+        foreach (var registration in registrations)
         {
-            ServiceRegistration registration = registrations[i];
-            if (servicesThatRequireNamePrefix.TryGetValue(registration.ServiceType, out string prefix))
-            {
-                registration.ServiceName = prefix + i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
-            }
-            else
-            {
-                registration.ServiceName = i.ToString("D8", CultureInfo.InvariantCulture.NumberFormat);
-            }
             container.Register(registration);
         }
     }
 
     private static ServiceRegistration CreateServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
-        if (serviceDescriptor.ImplementationFactory != null)
+        if (serviceDescriptor.IsKeyedService)
         {
-            return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
-        }
+            if (serviceDescriptor.KeyedImplementationFactory != null)
+            {
+                return CreateServiceRegistrationForKeyedFactoryDelegate(serviceDescriptor, rootScope);
+            }
 
-        if (serviceDescriptor.ImplementationInstance != null)
+            if (serviceDescriptor.KeyedImplementationInstance != null)
+            {
+                return CreateServiceRegistrationForKeyedImplementationInstance(serviceDescriptor, rootScope);
+            }
+
+            return CreateServiceRegistrationForKeyedImplementationType(serviceDescriptor, rootScope);
+        }
+        else
         {
-            return CreateServiceRegistrationForInstance(serviceDescriptor, rootScope);
-        }
+            if (serviceDescriptor.ImplementationFactory != null)
+            {
+                return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
+            }
 
-        return CreateServiceRegistrationServiceType(serviceDescriptor, rootScope);
+            if (serviceDescriptor.ImplementationInstance != null)
+            {
+                return CreateServiceRegistrationForImplementationInstance(serviceDescriptor, rootScope);
+            }
+
+            return CreateServiceRegistrationForImplementationType(serviceDescriptor, rootScope);
+        }
     }
 
-    private static ServiceRegistration CreateServiceRegistrationServiceType(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    private static ServiceRegistration CreateServiceRegistrationForImplementationType(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
         ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
         registration.ImplementingType = serviceDescriptor.ImplementationType;
         return registration;
     }
 
-    private static ServiceRegistration CreateServiceRegistrationForInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    private static ServiceRegistration CreateServiceRegistrationForKeyedImplementationType(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    {
+        ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
+        registration.ImplementingType = serviceDescriptor.KeyedImplementationType;
+        registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
+        return registration;
+    }
+
+    private static ServiceRegistration CreateServiceRegistrationForImplementationInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
         ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
         registration.Value = serviceDescriptor.ImplementationInstance;
+        return registration;
+    }
+
+    private static ServiceRegistration CreateServiceRegistrationForKeyedImplementationInstance(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    {
+        ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
+        registration.Value = serviceDescriptor.KeyedImplementationInstance;
+        registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
         return registration;
     }
 
@@ -177,14 +196,26 @@ public static class DependencyInjectionContainerExtensions
         return registration;
     }
 
+    private static ServiceRegistration CreateServiceRegistrationForKeyedFactoryDelegate(ServiceDescriptor serviceDescriptor, Scope rootScope)
+    {
+        ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
+        registration.FactoryExpression = CreateKeyedFactoryDelegate(serviceDescriptor);
+        registration.FactoryType = FactoryType.ServiceWithServiceKey;
+        return registration;
+    }
+
     private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
-        ServiceRegistration registration = new ServiceRegistration
+        ServiceRegistration registration = new ()
         {
             Lifetime = ResolveLifetime(serviceDescriptor, rootScope),
             ServiceType = serviceDescriptor.ServiceType,
-            ServiceName = Guid.NewGuid().ToString(),
         };
+        if (serviceDescriptor.IsKeyedService)
+        {
+            registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
+        }
+
         return registration;
     }
 
@@ -215,24 +246,74 @@ public static class DependencyInjectionContainerExtensions
             return true;
         }
 
-        if (serviceDescriptor.ImplementationType != null && !typeof(IDisposable).IsAssignableFrom(serviceDescriptor.ImplementationType))
+        if (serviceDescriptor.IsKeyedService)
         {
-            return false;
+            if (serviceDescriptor.KeyedImplementationType != null && typeof(IDisposable).IsAssignableFrom(serviceDescriptor.KeyedImplementationType))
+            {
+                return true;
+            }
+        }
+        else if (serviceDescriptor.ImplementationType != null && typeof(IDisposable).IsAssignableFrom(serviceDescriptor.ImplementationType))
+        {
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     private static Delegate CreateFactoryDelegate(ServiceDescriptor serviceDescriptor)
     {
         var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedFactoryDelegate");
         var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType.UnderlyingSystemType);
-        return (Delegate)closedGenericMethod.Invoke(null, new object[] { serviceDescriptor });
+        return (Delegate)closedGenericMethod.Invoke(null, [serviceDescriptor]);
     }
 
 #pragma warning disable IDE0051
     private static Func<IServiceFactory, T> CreateTypedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
         => serviceFactory => (T)serviceDescriptor.ImplementationFactory(new LightInjectServiceProvider((Scope)serviceFactory));
+#pragma warning restore IDE0051
+
+    private static Delegate CreateKeyedFactoryDelegate(ServiceDescriptor serviceDescriptor)
+    {
+        var openGenericMethod = typeof(DependencyInjectionContainerExtensions).GetTypeInfo().GetDeclaredMethod("CreateTypedKeyedFactoryDelegate");
+        var closedGenericMethod = openGenericMethod.MakeGenericMethod(serviceDescriptor.ServiceType.UnderlyingSystemType);
+        return (Delegate)closedGenericMethod.Invoke(null, [serviceDescriptor]);
+    }
+
+#pragma warning disable IDE0051
+    private static Func<IServiceFactory, string, T> CreateTypedKeyedFactoryDelegate<T>(ServiceDescriptor serviceDescriptor)
+    {
+        return (serviceFactory, serviceName) =>
+        {
+            LightInjectServiceProvider.KeyedServiceTypeCache.TryGetValue(serviceDescriptor.ServiceType, out var serviceKeyType);
+            object key;
+            if (serviceKeyType.IsEnum)
+            {
+                key = Enum.Parse(serviceKeyType, serviceName);
+            }
+            else if (serviceKeyType == typeof(int))
+            {
+                key = int.Parse(serviceName, CultureInfo.InvariantCulture);
+            }
+            else if (serviceKeyType == typeof(string))
+            {
+                key = serviceName;
+            }
+            else
+            {
+                try
+                {
+                    key = Convert.ChangeType(serviceName, serviceKeyType, CultureInfo.InvariantCulture);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Unable to convert service key '{serviceName}' to type '{serviceKeyType}'.", ex);
+                }
+            }
+
+            return (T)serviceDescriptor.KeyedImplementationFactory(new LightInjectServiceProvider((Scope)serviceFactory), key);
+        };
+    }
 #pragma warning restore IDE0051
 }
 
@@ -248,11 +329,10 @@ public static class ContainerOptionsExtensions
     /// <returns><see cref="ContainerOptions"/>.</returns>
     public static ContainerOptions WithMicrosoftSettings(this ContainerOptions options)
     {
-        //options.DefaultServiceSelector = serviceNames => serviceNames.SingleOrDefault(string.IsNullOrWhiteSpace) ?? serviceNames.Last();
-        options.DefaultServiceSelector = serviceNames => serviceNames.Last();
         options.EnablePropertyInjection = false;
         options.EnableCurrentScope = false;
         options.EnableOptionalArguments = true;
+        options.EnableMicrosoftCompatibility = true;
         return options;
     }
 
@@ -261,7 +341,7 @@ public static class ContainerOptionsExtensions
     /// </summary>
     /// <param name="containerOptions">The <see cref="ContainerOptions"/> for which to create a clone.</param>
     /// <returns>A clone of the given paramref name="containerOptions".</returns>
-    public static ContainerOptions Clone(this ContainerOptions containerOptions) => new ContainerOptions()
+    public static ContainerOptions Clone(this ContainerOptions containerOptions) => new ()
     {
         DefaultServiceSelector = containerOptions.DefaultServiceSelector,
         EnableCurrentScope = containerOptions.EnableCurrentScope,
@@ -270,6 +350,7 @@ public static class ContainerOptionsExtensions
         LogFactory = containerOptions.LogFactory,
         VarianceFilter = containerOptions.VarianceFilter,
         EnableOptionalArguments = containerOptions.EnableOptionalArguments,
+        EnableMicrosoftCompatibility = containerOptions.EnableMicrosoftCompatibility,
     };
 }
 
@@ -334,22 +415,19 @@ public class LightInjectServiceProviderFactory : IServiceProviderFactory<IServic
 /// <summary>
 /// An <see cref="IServiceProvider"/> that uses LightInject as the underlying container.
 /// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="LightInjectServiceProvider"/> class.
+/// </remarks>
+/// <param name="scope">The <see cref="Scope"/> from which this service provider requests services.</param>
 #if USE_ASYNCDISPOSABLE
-internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable, IAsyncDisposable
+internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupportRequiredService, IKeyedServiceProvider, IDisposable, IAsyncDisposable
 #else
-internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredService, IDisposable
+internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupportRequiredService, IDisposable
 #endif
 {
-    private readonly Scope scope;
-
     private bool isDisposed = false;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LightInjectServiceProvider"/> class.
-    /// </summary>
-    /// <param name="scope">The <see cref="Scope"/> from which this service provider requests services.</param>
-    public LightInjectServiceProvider(Scope scope)
-        => this.scope = scope;
+    public static ConcurrentDictionary<Type, Type> KeyedServiceTypeCache { get; } = new ConcurrentDictionary<Type, Type>();
 
     public void Dispose()
     {
@@ -374,6 +452,26 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
 
         return scope.DisposeAsync();
     }
+
+    public object GetKeyedService(Type serviceType, object serviceKey)
+    {
+        if (serviceKey != null)
+        {
+            KeyedServiceTypeCache.AddOrUpdate(serviceType, serviceKey.GetType(), (t, _) => serviceKey.GetType());
+        }
+
+        return scope.TryGetInstance(serviceType, serviceKey?.ToString());
+    }
+
+    public object GetRequiredKeyedService(Type serviceType, object serviceKey)
+    {
+        if (serviceKey != null)
+        {
+            KeyedServiceTypeCache.AddOrUpdate(serviceType, serviceKey.GetType(), (t, _) => serviceKey.GetType());
+        }
+
+        return scope.GetInstance(serviceType, serviceKey?.ToString());
+    }
 #endif
 
     /// <summary>
@@ -397,16 +495,12 @@ internal class LightInjectServiceProvider : IServiceProvider, ISupportRequiredSe
 /// <summary>
 /// An <see cref="IServiceScopeFactory"/> that uses an <see cref="IServiceContainer"/> to create new scopes.
 /// </summary>
-internal class LightInjectServiceScopeFactory : IServiceScopeFactory
+/// <remarks>
+/// Initializes a new instance of the <see cref="LightInjectServiceScopeFactory"/> class.
+/// </remarks>
+/// <param name="container">The <see cref="IServiceContainer"/> used to create new scopes.</param>
+internal class LightInjectServiceScopeFactory(IServiceContainer container) : IServiceScopeFactory
 {
-    private readonly IServiceContainer container;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LightInjectServiceScopeFactory"/> class.
-    /// </summary>
-    /// <param name="container">The <see cref="IServiceContainer"/> used to create new scopes.</param>
-    public LightInjectServiceScopeFactory(IServiceContainer container)
-        => this.container = container;
 
     /// <inheritdoc/>
     public IServiceScope CreateScope()
@@ -416,51 +510,39 @@ internal class LightInjectServiceScopeFactory : IServiceScopeFactory
 /// <summary>
 /// An <see cref="IServiceScope"/> implementation that wraps a <see cref="Scope"/>.
 /// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="LightInjectServiceScope"/> class.
+/// </remarks>
+/// <param name="scope">The <see cref="Scope"/> wrapped by this class.</param>
 #if USE_ASYNCDISPOSABLE
-internal class LightInjectServiceScope : IServiceScope, IAsyncDisposable
+internal class LightInjectServiceScope(Scope scope) : IServiceScope, IAsyncDisposable
 #else
-internal class LightInjectServiceScope : IServiceScope
+internal class LightInjectServiceScope(Scope scope) : IServiceScope
 #endif
 {
-    private readonly Scope wrappedScope;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LightInjectServiceScope"/> class.
-    /// </summary>
-    /// <param name="scope">The <see cref="Scope"/> wrapped by this class.</param>
-    public LightInjectServiceScope(Scope scope)
-    {
-        wrappedScope = scope;
-        ServiceProvider = new LightInjectServiceProvider(scope);
-    }
-
-    public IServiceProvider ServiceProvider { get; }
+    public IServiceProvider ServiceProvider { get; } = new LightInjectServiceProvider(scope);
 
     /// <inheritdoc/>
-    public void Dispose() => wrappedScope.Dispose();
+    public void Dispose() => scope.Dispose();
 
 #if USE_ASYNCDISPOSABLE
     /// <inheritdoc/>
-    public ValueTask DisposeAsync() => wrappedScope.DisposeAsync();
+    public ValueTask DisposeAsync() => scope.DisposeAsync();
 #endif
 }
 
 /// <summary>
 /// An <see cref="ILifetime"/> implementation that makes it possible to mimic the notion of a root scope.
 /// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="PerRootScopeLifetime"/> class.
+/// </remarks>
+/// <param name="rootScope">The root <see cref="Scope"/>.</param>
 [LifeSpan(30)]
-internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
+internal class PerRootScopeLifetime(Scope rootScope) : ILifetime, ICloneableLifeTime
 {
-    private readonly object syncRoot = new object();
-    private readonly Scope rootScope;
+    private readonly object syncRoot = new();
     private object instance;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PerRootScopeLifetime"/> class.
-    /// </summary>
-    /// <param name="rootScope">The root <see cref="Scope"/>.</param>
-    public PerRootScopeLifetime(Scope rootScope)
-        => this.rootScope = rootScope;
 
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
@@ -506,12 +588,17 @@ internal class PerRootScopeLifetime : ILifetime, ICloneableLifeTime
     }
 }
 
-internal class LightInjectIsServiceProviderIsService : IServiceProviderIsService
+internal class LightInjectIsServiceProviderIsService(Func<Type, string, bool> canGetService) : IServiceProviderIsKeyedService
 {
-    private readonly Func<Type, bool> canGetService;
+    public bool IsKeyedService(Type serviceType, object serviceKey)
+    {
+        if (serviceType.IsGenericTypeDefinition)
+        {
+            return false;
+        }
 
-    public LightInjectIsServiceProviderIsService(Func<Type, bool> canGetService)
-        => this.canGetService = canGetService;
+        return canGetService(serviceType, serviceKey?.ToString() ?? string.Empty);
+    }
 
     public bool IsService(Type serviceType)
     {
@@ -520,6 +607,6 @@ internal class LightInjectIsServiceProviderIsService : IServiceProviderIsService
             return false;
         }
 
-        return canGetService(serviceType);
+        return canGetService(serviceType, string.Empty);
     }
 }
