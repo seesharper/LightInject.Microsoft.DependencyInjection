@@ -119,8 +119,19 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         serviceCollection.AddKeyedTransient<IKeyedService, AnotherKeyedService>("AnotherKeyedService");
         serviceCollection.AddTransient<ServiceWithKeyedService>();
         var provider = CreateServiceProvider(serviceCollection);
-        //var provider = serviceCollection.BuildServiceProvider();
-        var instance = provider.GetService<ServiceWithKeyedService>();        
+        var instance = provider.GetService<ServiceWithKeyedService>();
+        Assert.IsType<AnotherKeyedService>(instance.Service);
+    }
+
+    [Fact]
+    public void ShouldInjectServiceFromDerivedServiceKey()
+    {
+         var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedService, KeyedService>("KeyedService");
+        serviceCollection.AddKeyedTransient<IKeyedService, AnotherKeyedService>("AnotherKeyedService");
+        serviceCollection.AddTransient<ServiceWithDerivedServiceKey>();
+        var provider = CreateServiceProvider(serviceCollection);
+        var instance = provider.GetService<ServiceWithDerivedServiceKey>();
         Assert.IsType<AnotherKeyedService>(instance.Service);
     }
 }
@@ -168,6 +179,20 @@ public class AnotherKeyedService : IKeyedService
 
 
 public class ServiceWithKeyedService([FromKeyedServices("AnotherKeyedService")] IKeyedService service)
+{
+    public IKeyedService Service { get; } = service;
+}
+
+
+public class DerivedServiceKey : FromKeyedServicesAttribute
+{
+    public DerivedServiceKey() : base("AnotherKeyedService")
+    {
+    }
+}
+
+
+public class ServiceWithDerivedServiceKey([DerivedServiceKey] IKeyedService service)
 {
     public IKeyedService Service { get; } = service;
 }
