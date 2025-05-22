@@ -632,8 +632,7 @@ public class AnnotatedConstructorDependencySelector : ConstructorDependencySelec
         foreach (var constructorDependency in constructorDependencies)
         {
             var injectAttribute =
-                (FromKeyedServicesAttribute)
-                constructorDependency.Parameter.GetCustomAttributes(typeof(FromKeyedServicesAttribute), true).FirstOrDefault();
+                constructorDependency.Parameter.GetFromKeyedServicesAttributes<FromKeyedServicesAttribute>().FirstOrDefault();
             if (injectAttribute != null)
             {
                 constructorDependency.ServiceName = injectAttribute.Key.ToString();
@@ -662,10 +661,17 @@ public class AnnotatedConstructorSelector(Func<Type, string, bool> canGetInstanc
     /// <returns>The name of the service for the given <paramref name="parameter"/>.</returns>
     protected override string GetServiceName(ParameterInfo parameter)
     {
-        var injectAttribute =
-                  (FromKeyedServicesAttribute)
-                  parameter.GetCustomAttributes(typeof(FromKeyedServicesAttribute), true).FirstOrDefault();
-
+        var injectAttribute = parameter.GetFromKeyedServicesAttributes<FromKeyedServicesAttribute>().FirstOrDefault();
         return injectAttribute != null ? injectAttribute.Key.ToString() : base.GetServiceName(parameter);
+    }
+}
+
+internal static class AttributeExtensions
+{
+    internal static T[] GetFromKeyedServicesAttributes<T>(this ParameterInfo member) where T : FromKeyedServicesAttribute
+    {
+        return member.GetCustomAttributes(inherit: true)
+            .OfType<T>()
+            .ToArray();
     }
 }
