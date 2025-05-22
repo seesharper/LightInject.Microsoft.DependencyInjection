@@ -40,6 +40,7 @@ namespace LightInject.Microsoft.DependencyInjection;
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
@@ -72,6 +73,8 @@ public static class LightInjectServiceCollectionExtensions
         var clonedOptions = options.Clone();
         clonedOptions.WithMicrosoftSettings();
         var container = new ServiceContainer(clonedOptions);
+        container.ConstructorDependencySelector = new AnnotatedConstructorDependencySelector();
+        container.ConstructorSelector = new AnnotatedConstructorSelector(container.CanGetInstance);
         return container.CreateServiceProvider(serviceCollection);
     }
 
@@ -206,7 +209,7 @@ public static class DependencyInjectionContainerExtensions
 
     private static ServiceRegistration CreateBasicServiceRegistration(ServiceDescriptor serviceDescriptor, Scope rootScope)
     {
-        ServiceRegistration registration = new ()
+        ServiceRegistration registration = new()
         {
             Lifetime = ResolveLifetime(serviceDescriptor, rootScope),
             ServiceType = serviceDescriptor.ServiceType,
@@ -341,7 +344,7 @@ public static class ContainerOptionsExtensions
     /// </summary>
     /// <param name="containerOptions">The <see cref="ContainerOptions"/> for which to create a clone.</param>
     /// <returns>A clone of the given paramref name="containerOptions".</returns>
-    public static ContainerOptions Clone(this ContainerOptions containerOptions) => new ()
+    public static ContainerOptions Clone(this ContainerOptions containerOptions) => new()
     {
         DefaultServiceSelector = containerOptions.DefaultServiceSelector,
         EnableCurrentScope = containerOptions.EnableCurrentScope,
@@ -608,5 +611,61 @@ internal class LightInjectIsServiceProviderIsService(Func<Type, string, bool> ca
         }
 
         return canGetService(serviceType, string.Empty);
+    }
+}
+
+/// <summary>
+/// A <see cref="ConstructorDependencySelector"/> that looks for the <see cref="FromKeyedServicesAttribute"/> 
+/// to determine the name of service to be injected.
+/// </summary>
+public class AnnotatedConstructorDependencySelector : ConstructorDependencySelector
+{
+    /// <summary>
+    /// Selects the constructor dependencies for the given <paramref name="constructor"/>.
+    /// </summary>
+    /// <param name="constructor">The <see cref="ConstructionInfo"/> for which to select the constructor dependencies.</param>
+    /// <returns>A list of <see cref="ConstructorDependency"/> instances that represents the constructor
+    /// dependencies for the given <paramref name="constructor"/>.</returns>
+    public override IEnumerable<ConstructorDependency> Execute(ConstructorInfo constructor)
+    {
+        var constructorDependencies = base.Execute(constructor).ToArray();
+        foreach (var constructorDependency in constructorDependencies)
+        {
+            var injectAttribute =
+                (FromKeyedServicesAttribute)
+                constructorDependency.Parameter.GetCustomAttributes(typeof(FromKeyedServicesAttribute), true).FirstOrDefault();
+            if (injectAttribute != null)
+            {
+                constructorDependency.ServiceName = injectAttribute.Key.ToString();
+            }
+        }
+
+        return constructorDependencies;
+    }
+}
+
+/// <summary>
+/// A <see cref="IConstructorSelector"/> implementation that uses information 
+/// from the <see cref="FromKeyedServicesAttribute"/> to determine if a given service can be resolved.
+/// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="AnnotatedConstructorSelector"/> class.
+/// </remarks>
+/// <param name="canGetInstance">A function delegate that determines if a service type can be resolved.</param>
+public class AnnotatedConstructorSelector(Func<Type, string, bool> canGetInstance) : MostResolvableConstructorSelector(canGetInstance)
+{
+
+    /// <summary>
+    /// Gets the service name based on the given <paramref name="parameter"/>.
+    /// </summary>
+    /// <param name="parameter">The <see cref="ParameterInfo"/> for which to get the service name.</param>
+    /// <returns>The name of the service for the given <paramref name="parameter"/>.</returns>
+    protected override string GetServiceName(ParameterInfo parameter)
+    {
+        var injectAttribute =
+                  (FromKeyedServicesAttribute)
+                  parameter.GetCustomAttributes(typeof(FromKeyedServicesAttribute), true).FirstOrDefault();
+
+        return injectAttribute != null ? injectAttribute.Key.ToString() : base.GetServiceName(parameter);
     }
 }
