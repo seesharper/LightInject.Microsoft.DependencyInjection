@@ -1,6 +1,8 @@
 #load "nuget:Dotnet.Build, 0.23.0"
 #load "nuget:dotnet-steps, 0.0.2"
 
+BuildContext.CodeCoverageThreshold = 90;
+
 [StepDescription("Runs the tests with test coverage")]
 Step testcoverage = () => DotNet.TestWithCodeCoverage();
 

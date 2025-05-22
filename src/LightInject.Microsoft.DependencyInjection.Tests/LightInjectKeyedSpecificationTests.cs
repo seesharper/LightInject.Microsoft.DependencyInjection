@@ -110,6 +110,19 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         var provider = CreateServiceProvider(serviceCollection);
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredKeyedService<IKeyedService>(null));
     }
+
+    [Fact]
+    public void ShouldInjectKeyedService()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedService, KeyedService>("KeyedService");
+        serviceCollection.AddKeyedTransient<IKeyedService, AnotherKeyedService>("AnotherKeyedService");
+        serviceCollection.AddTransient<ServiceWithKeyedService>();
+        var provider = CreateServiceProvider(serviceCollection);
+        //var provider = serviceCollection.BuildServiceProvider();
+        var instance = provider.GetService<ServiceWithKeyedService>();        
+        Assert.IsType<AnotherKeyedService>(instance.Service);
+    }
 }
 
 public interface IKeyedService
@@ -147,4 +160,14 @@ public enum Key
 {
     A,
     B
+}
+
+public class AnotherKeyedService : IKeyedService
+{
+}
+
+
+public class ServiceWithKeyedService([FromKeyedServices("AnotherKeyedService")] IKeyedService service)
+{
+    public IKeyedService Service { get; } = service;
 }
