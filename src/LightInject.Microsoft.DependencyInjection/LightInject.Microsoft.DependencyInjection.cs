@@ -188,6 +188,7 @@ public static class DependencyInjectionContainerExtensions
     {
         ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
         registration.Value = serviceDescriptor.KeyedImplementationInstance;
+        LightInjectServiceProvider.KeyedServiceTypeCache.TryAdd(serviceDescriptor.ServiceType, serviceDescriptor.ServiceKey.GetType());
         registration.ServiceName = serviceDescriptor.ServiceKey.ToString();
         return registration;
     }
@@ -203,6 +204,7 @@ public static class DependencyInjectionContainerExtensions
     {
         ServiceRegistration registration = CreateBasicServiceRegistration(serviceDescriptor, rootScope);
         registration.FactoryExpression = CreateKeyedFactoryDelegate(serviceDescriptor);
+        LightInjectServiceProvider.KeyedServiceTypeCache.TryAdd(serviceDescriptor.ServiceType, serviceDescriptor.ServiceKey.GetType());
         registration.FactoryType = FactoryType.ServiceWithServiceKey;
         return registration;
     }
