@@ -4,16 +4,16 @@
 BuildContext.CodeCoverageThreshold = 90;
 
 [StepDescription("Runs the tests with test coverage")]
-Step testcoverage = () => DotNet.TestWithCodeCoverage();
+AsyncStep testcoverage = async () => await DotNet.TestWithCodeCoverageAsync();
 
 [StepDescription("Runs all the tests for all target frameworks")]
-Step test = () => DotNet.Test();
+AsyncStep test = async () => await DotNet.TestAsync();
 
 [StepDescription("Creates the NuGet packages")]
-Step pack = () =>
+AsyncStep pack = async () =>
 {
-    test();
-    testcoverage();
+    await test();
+    await testcoverage();
     DotNet.Pack();
 };
 
@@ -21,7 +21,7 @@ Step pack = () =>
 [StepDescription("Deploys packages if we are on a tag commit in a secure environment.")]
 AsyncStep deploy = async () =>
 {
-    pack();
+    await pack();
     await Artifacts.Deploy();
 };
 
