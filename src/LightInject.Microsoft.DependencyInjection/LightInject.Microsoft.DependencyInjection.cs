@@ -431,6 +431,7 @@ internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupp
 #endif
 {
     private bool isDisposed = false;
+    private readonly ConcurrentDictionary<Type, object> anyKeyEnumerableCache = new();
 
     public static ConcurrentDictionary<Type, Type> KeyedServiceTypeCache { get; } = new ConcurrentDictionary<Type, Type>();
 
@@ -460,6 +461,13 @@ internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupp
 
     public object GetKeyedService(Type serviceType, object serviceKey)
     {
+        if (ReferenceEquals(serviceKey, KeyedService.AnyKey))
+        {
+            if (serviceType.IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                return anyKeyEnumerableCache.GetOrAdd(serviceType, t => scope.TryGetInstance(t, "*"));
+            throw new InvalidOperationException($"Resolving a single service with {nameof(KeyedService)}.{nameof(KeyedService.AnyKey)} is not supported.");
+        }
+
         if (serviceKey != null)
         {
             KeyedServiceTypeCache.AddOrUpdate(serviceType, serviceKey.GetType(), (t, _) => serviceKey.GetType());
@@ -470,6 +478,13 @@ internal class LightInjectServiceProvider(Scope scope) : IServiceProvider, ISupp
 
     public object GetRequiredKeyedService(Type serviceType, object serviceKey)
     {
+        if (ReferenceEquals(serviceKey, KeyedService.AnyKey))
+        {
+            if (serviceType.IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                return anyKeyEnumerableCache.GetOrAdd(serviceType, t => scope.GetInstance(t, "*"));
+            throw new InvalidOperationException($"Resolving a single service with {nameof(KeyedService)}.{nameof(KeyedService.AnyKey)} is not supported.");
+        }
+
         if (serviceKey != null)
         {
             KeyedServiceTypeCache.AddOrUpdate(serviceType, serviceKey.GetType(), (t, _) => serviceKey.GetType());
