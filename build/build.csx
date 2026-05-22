@@ -1,4 +1,4 @@
-#load "nuget:Dotnet.Build, 0.29.0"
+#load "nuget:Dotnet.Build, 0.31.0"
 #load "nuget:dotnet-steps, 0.0.2"
 
 BuildContext.CodeCoverageThreshold = 90;
@@ -14,7 +14,7 @@ AsyncStep pack = async () =>
 {
     await test();
     await testcoverage();
-    DotNet.Pack();
+    await DotNet.PackAsync();
 };
 
 [DefaultStep]
