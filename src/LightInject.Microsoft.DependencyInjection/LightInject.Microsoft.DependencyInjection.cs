@@ -134,6 +134,13 @@ public static class DependencyInjectionContainerExtensions
     {
         if (serviceDescriptor.IsKeyedService)
         {
+            // Some libraries (e.g. NServiceBus) create descriptors with both a factory and an implementation type.
+            // Just like MS.DI, we use the implementation type for open generic services since a factory cannot be closed.
+            if (serviceDescriptor.ServiceType.IsGenericTypeDefinition && serviceDescriptor.KeyedImplementationType != null)
+            {
+                return CreateServiceRegistrationForKeyedImplementationType(serviceDescriptor, rootScope);
+            }
+
             if (serviceDescriptor.KeyedImplementationFactory != null)
             {
                 return CreateServiceRegistrationForKeyedFactoryDelegate(serviceDescriptor, rootScope);
@@ -148,6 +155,11 @@ public static class DependencyInjectionContainerExtensions
         }
         else
         {
+            if (serviceDescriptor.ServiceType.IsGenericTypeDefinition && serviceDescriptor.ImplementationType != null)
+            {
+                return CreateServiceRegistrationForImplementationType(serviceDescriptor, rootScope);
+            }
+
             if (serviceDescriptor.ImplementationFactory != null)
             {
                 return CreateServiceRegistrationForFactoryDelegate(serviceDescriptor, rootScope);
