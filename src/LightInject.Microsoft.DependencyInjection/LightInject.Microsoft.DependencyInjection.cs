@@ -316,6 +316,12 @@ public static class DependencyInjectionContainerExtensions
             {
                 key = serviceName;
             }
+            else if (!ReferenceEquals(serviceDescriptor.ServiceKey, KeyedService.AnyKey) && serviceKeyType.IsInstanceOfType(serviceDescriptor.ServiceKey))
+            {
+                // The service name is derived from the registered service key so we can pass the original key
+                // rather than trying to convert the service name back to the key type (e.g. NServiceBus' KeyedServiceKey).
+                key = serviceDescriptor.ServiceKey;
+            }
             else
             {
                 try

@@ -88,9 +88,9 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
     public void ShouldThrowExceptionWhenUsingInvalidKeyType()
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddKeyedTransient<IKeyedServiceWithInvalidServiceKeyType>(new StringBuilder(), (sp, key) => new KeyedServiceWithInvalidServiceKeyType());
+        serviceCollection.AddKeyedTransient<IKeyedServiceWithInvalidServiceKeyType>(global::Microsoft.Extensions.DependencyInjection.KeyedService.AnyKey, (sp, key) => new KeyedServiceWithInvalidServiceKeyType());
         var provider = CreateServiceProvider(serviceCollection);
-        Assert.Throws<InvalidOperationException>(() => provider.GetKeyedService<IKeyedServiceWithInvalidServiceKeyType>(new StringBuilder()));
+        Assert.Throws<InvalidOperationException>(() => provider.GetKeyedService<IKeyedServiceWithInvalidServiceKeyType>(new StringBuilder("A")));
     }
 
     [Fact]
@@ -135,6 +135,30 @@ public class LightInjectKeyedSpecificationTests : KeyedDependencyInjectionSpecif
         var provider = CreateServiceProvider(serviceCollection);
         var instance = provider.GetRequiredService<ServiceWithDerivedServiceKey>();
         Assert.IsType<AnotherKeyedService>(instance.Service);
+    }
+
+    [Fact]
+    public void ShouldPassOriginalServiceKeyToFactoryForCustomKeyType()
+    {
+        // Mimics NServiceBus' KeyedServiceKey that wraps the endpoint name.
+        var serviceKey = new CompositeServiceKey("EndpointName");
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedServiceWithCustomKey>(serviceKey, (sp, key) => new KeyedServiceWithCustomKey((CompositeServiceKey)key));
+        var provider = CreateServiceProvider(serviceCollection);
+        var instance = provider.GetRequiredKeyedService<IKeyedServiceWithCustomKey>(new CompositeServiceKey("EndpointName"));
+        Assert.Same(serviceKey, instance.ServiceKey);
+    }
+
+    [Fact]
+    public void ShouldPassOriginalServiceKeyToFactoryWhenServiceTypeIsResolvedWithDifferentKeyTypes()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddKeyedTransient<IKeyedService>("EndpointName", (sp, key) => new KeyedService());
+        serviceCollection.AddKeyedTransient<IKeyedService>(new CompositeServiceKey("EndpointName", "Local"), (sp, key) => ((CompositeServiceKey)key).ServiceKey == "Local" ? new AnotherKeyedService() : new KeyedService());
+        var provider = CreateServiceProvider(serviceCollection);
+        Assert.IsType<KeyedService>(provider.GetRequiredKeyedService<IKeyedService>("EndpointName"));
+        Assert.IsType<AnotherKeyedService>(provider.GetRequiredKeyedService<IKeyedService>(new CompositeServiceKey("EndpointName", "Local")));
+        Assert.IsType<KeyedService>(provider.GetRequiredKeyedService<IKeyedService>("EndpointName"));
     }
 }
 
@@ -230,4 +254,27 @@ public class DerivedServiceKey : FromKeyedServicesAttribute
 public class ServiceWithDerivedServiceKey([DerivedServiceKey] IKeyedService service)
 {
     public IKeyedService Service { get; } = service;
+}
+public sealed class CompositeServiceKey(object baseKey, string serviceKey = null)
+{
+    public object BaseKey { get; } = baseKey;
+
+    public string ServiceKey { get; } = serviceKey;
+
+    public override bool Equals(object obj)
+        => obj is CompositeServiceKey other ? Equals(BaseKey, other.BaseKey) && ServiceKey == other.ServiceKey : Equals(BaseKey, obj);
+
+    public override int GetHashCode() => HashCode.Combine(BaseKey, ServiceKey);
+
+    public override string ToString() => ServiceKey == null ? BaseKey.ToString() : $"({BaseKey}, {ServiceKey})";
+}
+
+public interface IKeyedServiceWithCustomKey
+{
+    CompositeServiceKey ServiceKey { get; }
+}
+
+public class KeyedServiceWithCustomKey(CompositeServiceKey serviceKey) : IKeyedServiceWithCustomKey
+{
+    public CompositeServiceKey ServiceKey { get; } = serviceKey;
 }
